@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import AnimatedBackground from '@/components/AnimatedBackground';
+
 import PastelEmoji from '@/components/PastelEmoji';
 import { useTheme } from '@/context/ThemeContext';
 import Link from 'next/link';
@@ -79,7 +79,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden pointer-events-none">
-      <AnimatedBackground enableInteractivity={true} />
+
 
       {/* Main Content Container with Entry Animation */}
       <motion.div

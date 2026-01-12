@@ -5,6 +5,7 @@ import { DataProvider } from '@/context/DataContext';
 import ThemeToggle from '@/components/ThemeToggle';
 import CursorEffects from '@/components/CursorEffects';
 import MusicVisualizer from '@/components/MusicVisualizer';
+import AnimatedBackground from '@/components/AnimatedBackground';
 import { ReactNode } from 'react';
 
 interface ClientLayoutProps {
@@ -18,6 +19,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
         <ThemeToggle />
         <CursorEffects />
         <MusicVisualizer />
+        <AnimatedBackground enableInteractivity />
         {children}
       </DataProvider>
     </ThemeProvider>

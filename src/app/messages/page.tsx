@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AnimatedBackground from '@/components/AnimatedBackground';
+
 import RomanticButton from '@/components/RomanticButton';
 import PastelEmoji from '@/components/PastelEmoji';
 import Link from 'next/link';
@@ -72,7 +72,7 @@ export default function MessagesPage() {
 
   return (
     <main className="min-h-screen relative overflow-hidden">
-      <AnimatedBackground />
+
 
       <div className="relative z-10 px-4 py-8 max-w-2xl mx-auto min-h-screen flex flex-col items-center justify-center">
         {/* Back to Home - Fixed top left */}
