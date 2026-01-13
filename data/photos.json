@@ -1,14 +1,8 @@
 {
   "photos": [
     {
-      "id": 1,
-      "src": "/photos/photo1.jpg",
-      "caption": "Our first adventure together",
-      "date": "2025-05-20"
-    },
-    {
       "id": 2,
-      "src": "/photos/photo2.jpg",
+      "src": "/uploads/1768300828580-ChatGPTImageJan72026063008PM.png",
       "caption": "That sunset we'll never forget",
       "date": "2025-06-15"
     },

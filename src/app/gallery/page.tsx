@@ -110,45 +110,50 @@ export default function GalleryPage() {
                 transition={{ duration: 0.5 }}
                 className="absolute inset-0"
               >
-                {/* Photo placeholder - shows when no actual image */}
-                <div className={`w-full h-full flex items-center justify-center ${isDark
-                  ? 'bg-gradient-to-br from-slate-800 via-purple-900/50 to-slate-800'
-                  : 'bg-gradient-to-br from-pink-100 via-rose-100 to-pink-50'
-                  }`}>
-                  <div className="text-center p-8">
-                    <div className="text-6xl mb-4">📷</div>
-                    <p className={`text-sm ${isDark ? 'text-purple-300' : 'text-rose-400'}`}>
-                      Add your photo: {currentPhoto.src}
-                    </p>
+                {currentPhoto.src ? (
+                  <>
+                    {/* Blurred Background for "Fill" effect */}
+                    <div className="absolute inset-0 z-0">
+                      <img
+                        src={currentPhoto.src}
+                        alt=""
+                        className="w-full h-full object-cover blur-2xl opacity-40 scale-110"
+                      />
+                    </div>
+                    {/* Main Image - Fully Visible */}
+                    <img
+                      src={currentPhoto.src}
+                      alt={currentPhoto.caption}
+                      className="relative z-10 w-full h-full object-contain drop-shadow-md"
+                    />
+                  </>
+                ) : (
+                  <div className={`w-full h-full flex items-center justify-center ${isDark
+                    ? 'bg-gradient-to-br from-slate-800 via-purple-900/50 to-slate-800'
+                    : 'bg-gradient-to-br from-pink-100 via-rose-100 to-pink-50'
+                    }`}>
+                    <div className="text-center p-8">
+                      <div className="text-6xl mb-4">📷</div>
+                    </div>
                   </div>
-                </div>
-
-                {/* Uncomment this when you have actual photos
-                <Image
-                  src={currentPhoto.src}
-                  alt={currentPhoto.caption}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-                */}
+                )}
               </motion.div>
             </AnimatePresence>
 
             {/* Caption overlay */}
-            <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 ${isDark
-              ? 'bg-gradient-to-t from-slate-900/90 to-transparent'
-              : 'bg-gradient-to-t from-black/50 to-transparent'
+            <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 z-20 ${isDark
+              ? 'bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent'
+              : 'bg-gradient-to-t from-black/70 via-black/40 to-transparent'
               }`}>
               <motion.p
                 key={`caption-${currentIndex}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-white text-lg md:text-xl font-medium"
+                className="text-white text-lg md:text-xl font-medium drop-shadow-md"
               >
                 {currentPhoto.caption}
               </motion.p>
-              <p className="text-white/70 text-sm mt-1">
+              <p className="text-white/80 text-sm mt-1 drop-shadow-sm">
                 {new Date(currentPhoto.date).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
@@ -215,8 +220,8 @@ export default function GalleryPage() {
           <Link
             href="/manage/gallery"
             className={`inline-block text-xs px-4 py-2 rounded-xl transition-colors ${isDark
-                ? 'bg-purple-800/50 text-purple-300 hover:bg-purple-700/50'
-                : 'bg-pink-100 text-rose-500 hover:bg-pink-200'
+              ? 'bg-purple-800/50 text-purple-300 hover:bg-purple-700/50'
+              : 'bg-pink-100 text-rose-500 hover:bg-pink-200'
               }`}
           >
             + Add Photos

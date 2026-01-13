@@ -22,6 +22,7 @@ interface Photo {
   src: string; // URL or path to image
   caption: string;
   date: string;
+  storagePath?: string; // Optional: path in Firebase Storage
 }
 
 interface Song {
@@ -37,12 +38,16 @@ interface DataContextType {
   specialDates: SpecialDate[];
   photos: Photo[];
   songs: Song[];
+  loadingConfig: {
+    photos: boolean;
+  };
   addMessage: (text: string, type: string) => void;
   removeMessage: (id: number) => void;
   addSpecialDate: (title: string, date: string, emoji: string, recurring: boolean) => void;
   removeSpecialDate: (id: number) => void;
-  addPhoto: (src: string, caption: string, date: string) => void;
-  removePhoto: (id: number) => void;
+  addPhoto: (fileOrUrl: File | string, caption: string, date: string) => Promise<{ success: boolean; error?: string }>;
+  updatePhoto: (id: number, fileOrUrl: File | string | null, caption: string, date: string) => Promise<{ success: boolean; error?: string }>;
+  removePhoto: (id: number) => Promise<void>;
   addSong: (title: string, artist: string, spotifyId: string) => void;
   removeSong: (id: number) => void;
 }
@@ -52,7 +57,6 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 // Import initial JSON data to populate state if localStorage is empty
 import initialMessages from '@/../data/messages.json';
 import initialSpecialDates from '@/../data/special-dates.json';
-import initialPhotos from '@/../data/photos.json';
 import initialMusic from '@/../data/music.json';
 
 // Provider Component: Manages global state and data persistence
@@ -63,24 +67,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState({ photos: true });
 
-  // Effect: Load data from localStorage on component mount
-  // Fallback to initial JSON files if no local data exists
+  // Initial Data Load
   useEffect(() => {
+    // 1. Load LocalStorage items (legacy/local-only data)
     const storedMessages = localStorage.getItem('messages');
     const storedSpecialDates = localStorage.getItem('specialDates');
-    const storedPhotos = localStorage.getItem('photos');
     const storedSongs = localStorage.getItem('songs');
 
     // eslint-disable-next-line
     setMessages(storedMessages ? JSON.parse(storedMessages) : initialMessages.messages);
     setSpecialDates(storedSpecialDates ? JSON.parse(storedSpecialDates) : initialSpecialDates.specialDates);
-    setPhotos(storedPhotos ? JSON.parse(storedPhotos) : initialPhotos.photos);
     setSongs(storedSongs ? JSON.parse(storedSongs) : initialMusic.songs);
+
+    // 2. Load Photos from API (Persistent DB)
+    fetch('/api/photos')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setPhotos(data);
+        }
+      })
+      .catch(err => console.error("Failed to load photos", err))
+      .finally(() => setLoadingConfig(prev => ({ ...prev, photos: false })));
+
     setIsLoaded(true);
   }, []);
 
-  // Effects: Persist state changes to localStorage
+  // Effects: Persist NON-PHOTO state changes to localStorage
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem('messages', JSON.stringify(messages));
@@ -95,17 +110,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('photos', JSON.stringify(photos));
-    }
-  }, [photos, isLoaded]);
-
-  useEffect(() => {
-    if (isLoaded) {
       localStorage.setItem('songs', JSON.stringify(songs));
     }
   }, [songs, isLoaded]);
 
   // CRUD Operations
+
   const addMessage = (text: string, type: string = 'note') => {
     const newId = Math.max(0, ...messages.map(m => m.id)) + 1;
     setMessages([...messages, { id: newId, text, type }]);
@@ -124,13 +134,81 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setSpecialDates(specialDates.filter(s => s.id !== id));
   };
 
-  const addPhoto = (src: string, caption: string, date: string) => {
-    const newId = Math.max(0, ...photos.map(p => p.id)) + 1;
-    setPhotos([...photos, { id: newId, src, caption, date }]);
+  const addPhoto = async (fileOrUrl: File | string, caption: string, date: string) => {
+    try {
+      const formData = new FormData();
+      if (typeof fileOrUrl === 'string') {
+        formData.append('src', fileOrUrl);
+      } else {
+        formData.append('file', fileOrUrl);
+      }
+      formData.append('caption', caption);
+      formData.append('date', date);
+
+      const res = await fetch('/api/photos', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'API save failed');
+      }
+
+      setPhotos(prev => [data, ...prev]);
+      return { success: true };
+    } catch (e) {
+      console.error(e);
+      return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
+    }
   };
 
-  const removePhoto = (id: number) => {
+  const updatePhoto = async (id: number, fileOrUrl: File | string | null, caption: string, date: string) => {
+    try {
+      const formData = new FormData();
+      if (fileOrUrl) {
+        if (typeof fileOrUrl === 'string') {
+          formData.append('src', fileOrUrl);
+        } else {
+          formData.append('file', fileOrUrl);
+        }
+      }
+      formData.append('caption', caption);
+      formData.append('date', date);
+
+      const res = await fetch(`/api/photos/${id}`, {
+        method: 'PUT',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Update failed');
+      }
+
+      setPhotos(prev => prev.map(p => p.id === id ? data : p));
+      return { success: true };
+    } catch (e) {
+      console.error(e);
+      return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
+    }
+  };
+
+  const removePhoto = async (id: number) => {
+    // Optimistic update
+    const previousPhotos = [...photos];
     setPhotos(photos.filter(p => p.id !== id));
+
+    try {
+      const res = await fetch(`/api/photos/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+    } catch (e) {
+      console.error(e);
+      // Revert if failed
+      setPhotos(previousPhotos);
+    }
   };
 
   const addSong = (title: string, artist: string, spotifyId: string) => {
@@ -148,11 +226,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       specialDates,
       photos,
       songs,
+      loadingConfig,
       addMessage,
       removeMessage,
       addSpecialDate,
       removeSpecialDate,
       addPhoto,
+      updatePhoto,
       removePhoto,
       addSong,
       removeSong,
