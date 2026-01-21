@@ -7,6 +7,7 @@ import CursorEffects from '@/components/CursorEffects';
 import MusicVisualizer from '@/components/MusicVisualizer';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import { ReactNode } from 'react';
+import { Toaster } from 'react-hot-toast';
 
 interface ClientLayoutProps {
   children: ReactNode;
@@ -20,6 +21,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
         <CursorEffects />
         <MusicVisualizer />
         <AnimatedBackground enableInteractivity />
+        <Toaster position="top-center" />
         {children}
       </DataProvider>
     </ThemeProvider>

@@ -2,10 +2,19 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AnimatedBackground from '@/components/AnimatedBackground';
+
 import { useTheme } from '@/context/ThemeContext';
 import { useData } from '@/context/DataContext';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
+
+// Simple Spinner Component
+const Spinner = () => (
+  <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+  </svg>
+);
 
 export default function ManageGalleryPage() {
   const { theme } = useTheme();
@@ -31,11 +40,14 @@ export default function ManageGalleryPage() {
   const handleAdd = async () => {
     if ((imageUrl.trim() || selectedFile) && caption.trim() && date) {
       setIsUploading(true);
+      const toastId = toast.loading('Uploading photo...');
+
       try {
         const source = srcType === 'upload' && selectedFile ? selectedFile : imageUrl.trim();
         const result = await addPhoto(source, caption.trim(), date);
 
         if (result.success) {
+          toast.success('Photo added successfully!', { id: toastId });
           setImageUrl('');
           setSelectedFile(null);
           setCaption('');
@@ -43,11 +55,11 @@ export default function ManageGalleryPage() {
           const fileInput = document.getElementById('file-upload') as HTMLInputElement;
           if (fileInput) fileInput.value = '';
         } else {
-          alert(result.error || 'Failed to save photo. Please try again.');
+          toast.error(result.error || 'Failed to save photo.', { id: toastId });
         }
       } catch (e) {
         console.error(e);
-        alert('An error occurred.');
+        toast.error('An unexpected error occurred.', { id: toastId });
       } finally {
         setIsUploading(false);
       }
@@ -72,8 +84,8 @@ export default function ManageGalleryPage() {
     setEditDate(photo.date);
     setEditImageUrl(photo.src); // Default to current src
     // Determine type
-    if (photo.src.startsWith('/uploads/') || photo.src.startsWith('data:')) {
-      setEditSrcType('upload'); // Assume file if local path
+    if (photo.src.startsWith('/uploads/') || photo.src.startsWith('data:') || photo.src.includes('drive.google.com') || photo.src.includes('googleusercontent')) {
+      setEditSrcType('upload'); // Treat as file-like display
     } else {
       setEditSrcType('url');
     }
@@ -95,12 +107,10 @@ export default function ManageGalleryPage() {
   const handleUpdate = async () => {
     if (!editingPhoto) return;
     setIsUploading(true);
+    const toastId = toast.loading('Updating photo...');
+
     try {
-      // If user picked a file, use it. If they entered a URL, use it. 
-      // If they didn't touch image (file null, url same as original), pass null to API (keeps existing).
-
       let source: File | string | null = null;
-
       if (editSrcType === 'upload' && editFile) {
         source = editFile;
       } else if (editSrcType === 'url' && editImageUrl !== editingPhoto.src) {
@@ -110,25 +120,23 @@ export default function ManageGalleryPage() {
       const result = await updatePhoto(editingPhoto.id, source, editCaption, editDate);
 
       if (result.success) {
+        toast.success('Photo updated!', { id: toastId });
         setEditingPhoto(null);
         setEditFile(null);
       } else {
-        alert(result.error || 'Failed to update photo');
+        toast.error(result.error || 'Failed to update.', { id: toastId });
       }
 
     } catch (e) {
       console.error(e);
-      alert('Update failed');
+      toast.error('Update failed.', { id: toastId });
     } finally {
       setIsUploading(false);
     }
   };
 
-
   return (
     <main className="min-h-screen relative overflow-hidden">
-      <AnimatedBackground />
-
       <div className="relative z-10 px-4 py-8 max-w-2xl mx-auto min-h-screen">
         <Link
           href="/gallery"
@@ -178,7 +186,7 @@ export default function ManageGalleryPage() {
 
             {imageUrl && (
               <div className={`rounded-xl overflow-hidden border ${isDark ? 'border-purple-500/30' : 'border-pink-200'}`}>
-                <img src={imageUrl} alt="Preview" className="w-full h-40 object-cover" onError={(e) => (e.target as HTMLImageElement).src = 'data:image/svg+xml,...'} />
+                <img src={imageUrl} alt="Preview" className="w-full h-40 object-cover" onError={(e) => (e.target as HTMLImageElement).src = 'data:image/svg+xml,...'} referrerPolicy="no-referrer" />
               </div>
             )}
 
@@ -186,8 +194,15 @@ export default function ManageGalleryPage() {
             <div><label className={`block text-sm mb-1 ${isDark ? 'text-purple-300' : 'text-pink-500'}`}>Date</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`w-full p-3 rounded-xl border ${isDark ? 'bg-slate-900/50 border-purple-500/30 text-pink-100' : 'bg-pink-50 border-pink-200 text-rose-800'}`} /></div>
           </div>
 
-          <button onClick={handleAdd} disabled={(!imageUrl.trim() && !selectedFile) || !caption.trim() || !date || isUploading} className={`mt-6 px-6 py-2 rounded-xl font-medium w-full flex justify-center items-center ${((imageUrl || selectedFile) && caption && date && !isUploading) ? (isDark ? 'bg-pink-500 text-white' : 'bg-rose-500 text-white') : (isDark ? 'bg-slate-700 text-slate-500' : 'bg-pink-100 text-pink-300')}`}>
-            {isUploading ? 'Uploading...' : '+ Add Photo'}
+          <button onClick={handleAdd} disabled={(!imageUrl.trim() && !selectedFile) || !caption.trim() || !date || isUploading} className={`mt-6 px-6 py-2 rounded-xl font-medium w-full flex justify-center items-center gap-2 ${((imageUrl || selectedFile) && caption && date && !isUploading) ? (isDark ? 'bg-pink-500 text-white' : 'bg-rose-500 text-white') : (isDark ? 'bg-slate-700 text-slate-500' : 'bg-pink-100 text-pink-300')}`}>
+            {isUploading ? (
+              <>
+                <Spinner />
+                Uploading...
+              </>
+            ) : (
+              '+ Add Photo'
+            )}
           </button>
         </motion.div>
 
@@ -198,7 +213,7 @@ export default function ManageGalleryPage() {
             {photos.map((photo, index) => (
               <motion.div key={photo.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.05 }} className={`relative rounded-xl overflow-hidden ${isDark ? 'bg-slate-800/60 border border-purple-500/20' : 'bg-white/60 border border-pink-200/50'}`}>
                 <div className="aspect-square relative">
-                  <img src={photo.src} alt={photo.caption} className="w-full h-full object-cover" />
+                  <img src={photo.src} alt={photo.caption} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div className="p-3">
                   <p className={`text-sm font-medium truncate ${isDark ? 'text-pink-200' : 'text-rose-700'}`}>{photo.caption}</p>
@@ -247,7 +262,7 @@ export default function ManageGalleryPage() {
 
                 {editImageUrl && (
                   <div className="h-32 w-full rounded overflow-hidden bg-gray-100">
-                    <img src={editImageUrl} className="w-full h-full object-cover" />
+                    <img src={editImageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                 )}
 

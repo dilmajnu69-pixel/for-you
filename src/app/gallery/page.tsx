@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/context/ThemeContext';
 import { useData } from '@/context/DataContext';
 import Link from 'next/link';
-import AnimatedBackground from '@/components/AnimatedBackground';
+
 
 interface Photo {
   id: number;
@@ -47,13 +47,24 @@ export default function GalleryPage() {
   if (photos.length === 0) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden">
-        <AnimatedBackground />
+
         <div className={`text-center z-10 ${isDark ? 'text-pink-300' : 'text-rose-600'}`}>
           <p className="text-xl mb-4">No photos yet! 📸</p>
-          <p className="text-sm opacity-70">Add photos to /public/photos/ and configure /data/photos.json</p>
-          <Link href="/" className="inline-block mt-6 text-sm underline hover:no-underline">
-            ← Back to Home
-          </Link>
+          <p className="text-sm opacity-70 mb-6">Start building your collection now.</p>
+          <div className="flex flex-col gap-4 items-center">
+            <Link
+              href="/manage/gallery"
+              className={`px-6 py-3 rounded-full font-medium transition-transform hover:scale-105 active:scale-95 shadow-lg ${isDark
+                ? 'bg-pink-500 text-white hover:bg-pink-400'
+                : 'bg-rose-500 text-white hover:bg-rose-600'
+                }`}
+            >
+              + Add Your First Photo
+            </Link>
+            <Link href="/" className="text-sm underline hover:no-underline opacity-80 hover:opacity-100">
+              ← Back to Home
+            </Link>
+          </div>
         </div>
       </main>
     );
@@ -61,8 +72,6 @@ export default function GalleryPage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden">
-      <AnimatedBackground />
-
       {/* Back button */}
       <Link
         href="/"
@@ -118,6 +127,7 @@ export default function GalleryPage() {
                         src={currentPhoto.src}
                         alt=""
                         className="w-full h-full object-cover blur-2xl opacity-40 scale-110"
+                        referrerPolicy="no-referrer"
                       />
                     </div>
                     {/* Main Image - Fully Visible */}
@@ -125,6 +135,7 @@ export default function GalleryPage() {
                       src={currentPhoto.src}
                       alt={currentPhoto.caption}
                       className="relative z-10 w-full h-full object-contain drop-shadow-md"
+                      referrerPolicy="no-referrer"
                     />
                   </>
                 ) : (

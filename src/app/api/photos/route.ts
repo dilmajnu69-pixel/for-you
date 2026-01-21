@@ -1,33 +1,18 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import { writeFile } from 'fs/promises';
-
-// Helper to read/write JSON DB
-const DB_PATH = path.join(process.cwd(), 'data', 'photos.json');
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
-
-function getPhotos() {
-  if (!fs.existsSync(DB_PATH)) return [];
-  const content = fs.readFileSync(DB_PATH, 'utf-8');
-  try {
-    const json = JSON.parse(content);
-    return Array.isArray(json) ? json : (json.photos || []);
-  } catch (e) {
-    return [];
-  }
-}
-
-function savePhotos(photos: any[]) {
-  fs.writeFileSync(DB_PATH, JSON.stringify({ photos }, null, 2));
-}
+import { getDatabase, saveDatabase, uploadFile } from '@/lib/google-drive';
 
 export async function GET() {
-  const photos = getPhotos();
-  const sorted = [...photos].sort((a, b) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-  return NextResponse.json(sorted);
+  try {
+    const photos = await getDatabase();
+    // Sort by date descending
+    photos.sort((a: any, b: any) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    return NextResponse.json(photos);
+  } catch (error: any) {
+    console.error('Drive DB Read Error:', error);
+    return NextResponse.json([], { status: 200 }); // Return empty if failed (first run)
+  }
 }
 
 export async function POST(request: Request) {
@@ -35,30 +20,14 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const caption = formData.get('caption') as string;
     const date = formData.get('date') as string;
-
-    // Check for web URL first
     const srcUrl = formData.get('src') as string;
     let finalUrl = srcUrl || '';
 
-    // If file provided, upload it
     const file = formData.get('file') as File;
 
+    // Upload to Drive if file provided
     if (file) {
-      // Local Filesystem Upload
-      // Ensure directory exists
-      if (!fs.existsSync(UPLOAD_DIR)) {
-        fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-      }
-
-      const buffer = Buffer.from(await file.arrayBuffer());
-      // Sanitize filename
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '');
-      const fileName = `${Date.now()}-${safeName}`;
-      const filePath = path.join(UPLOAD_DIR, fileName);
-
-      await writeFile(filePath, buffer);
-
-      finalUrl = `/uploads/${fileName}`;
+      finalUrl = await uploadFile(file);
     }
 
     if (!finalUrl || !caption || !date) {
@@ -68,8 +37,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update JSON Database
-    const photos = getPhotos();
+    // Update Drive DB
+    const photos = await getDatabase();
     const newPhoto = {
       id: Date.now(),
       src: finalUrl,
@@ -78,7 +47,7 @@ export async function POST(request: Request) {
     };
 
     photos.push(newPhoto);
-    savePhotos(photos);
+    await saveDatabase(photos);
 
     return NextResponse.json(newPhoto);
 
