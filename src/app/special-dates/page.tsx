@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AnimatedBackground from '@/components/AnimatedBackground';
+
 import CountdownCard from '@/components/CountdownCard';
 import CalendarView from '@/components/CalendarView';
 import Link from 'next/link';
@@ -31,8 +31,8 @@ export default function SpecialDatesPage() {
   });
 
   return (
-    <main className="min-h-screen relative overflow-hidden">
-      <AnimatedBackground />
+    <main className="min-h-screen relative overflow-y-auto overflow-x-hidden">
+
 
       <div className="relative z-10 px-4 py-8 max-w-4xl mx-auto min-h-screen">
         {/* Back to Home - Fixed top left */}
@@ -84,6 +84,7 @@ export default function SpecialDatesPage() {
               date={date.date}
               emoji={date.emoji}
               index={index}
+              recurring={date.recurring}
             />
           ))}
         </div>

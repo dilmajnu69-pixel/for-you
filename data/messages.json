@@ -2,63 +2,83 @@
   "messages": [
     {
       "id": 1,
-      "text": "Your smile lights up my entire world 💕",
+      "text": "You have the most wonderful of smiles in the world 💕",
       "type": "compliment"
     },
     {
       "id": 2,
-      "text": "Every moment with you feels like a beautiful dream ✨",
+      "text": "Tumhare hath ki crispy aalo ki sabzi is the best!! ✨",
       "type": "compliment"
     },
     {
       "id": 3,
-      "text": "You make my heart skip a beat, every single day 💖",
+      "text": "You do the cutest things 💖",
       "type": "compliment"
     },
     {
       "id": 4,
-      "text": "Your laughter is my favorite melody 🎵",
+      "text": "You care very deeply for everyone 🎵",
       "type": "compliment"
     },
     {
       "id": 5,
-      "text": "Being with you feels like coming home 🏡💗",
-      "type": "compliment"
+      "text": "Start believing in yourself much more!!🏡💗",
+      "type": "advice"
     },
     {
       "id": 6,
-      "text": "You are the reason I believe in magic 🌟",
-      "type": "compliment"
+      "text": "Be proud of the person you are🌟",
+      "type": "advice"
     },
     {
       "id": 7,
-      "text": "Your kindness makes the world a better place 🌸",
+      "text": "You make my world a better place 🌸",
       "type": "compliment"
     },
     {
       "id": 8,
-      "text": "I fall more in love with you every day 💝",
+      "text": "I love love love you!! 💝",
       "type": "love"
     },
     {
       "id": 9,
-      "text": "You are my sunshine on the cloudiest days ☀️",
+      "text": "Your cutu baby voice is the cutest ☀️",
       "type": "compliment"
     },
     {
       "id": 10,
-      "text": "Your eyes hold galaxies of wonder 🌌",
+      "text": "Tumhari aankhe hi nasha hai 🌌",
       "type": "compliment"
     },
     {
       "id": 11,
-      "text": "Every love song reminds me of you 💓",
-      "type": "love"
+      "text": "I want you to work on loving yourself 💓",
+      "type": "advice"
     },
     {
       "id": 12,
-      "text": "You are the most beautiful soul I have ever known 🦋",
+      "text": "You fill my heart with love 🦋",
       "type": "compliment"
+    },
+    {
+      "id": 13,
+      "text": "I wish we can go on a bunch of trips.",
+      "type": "wish"
+    },
+    {
+      "id": 14,
+      "text": "I wish a lot of success for you.",
+      "type": "wish"
+    },
+    {
+      "id": 15,
+      "text": "I wish to travel a lot with you.",
+      "type": "wish"
+    },
+    {
+      "id": 16,
+      "text": "I wish to learn how to live in stability and boredom with you.",
+      "type": "wish"
     }
   ]
 }

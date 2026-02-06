@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import AnimatedBackground from '@/components/AnimatedBackground';
+
 import { useTheme } from '@/context/ThemeContext';
 import { useData } from '@/context/DataContext';
 import Link from 'next/link';
@@ -39,7 +39,7 @@ export default function ManageMessagesPage() {
 
   return (
     <main className="min-h-screen relative overflow-hidden">
-      <AnimatedBackground />
+
 
       <div className="relative z-10 px-4 py-8 max-w-2xl mx-auto min-h-screen">
         {/* Back button */}

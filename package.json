@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "firebase": "^12.7.0",
     "framer-motion": "^12.24.1",
     "googleapis": "^170.0.0",

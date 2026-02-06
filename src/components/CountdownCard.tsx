@@ -10,6 +10,7 @@ interface CountdownCardProps {
   date: string;
   emoji: string;
   index: number;
+  recurring?: boolean; // Whether this date repeats annually
 }
 
 interface TimeLeft {
@@ -20,13 +21,13 @@ interface TimeLeft {
   total: number;
 }
 
-function calculateTimeLeft(targetDate: string): TimeLeft {
+function calculateTimeLeft(targetDate: string, recurring: boolean = true): TimeLeft {
   const now = new Date().getTime();
   const target = new Date(targetDate).getTime();
   let difference = target - now;
 
-  // If the date has passed this year, calculate for next year
-  if (difference < 0) {
+  // If the date has passed and it's recurring, calculate for next year
+  if (difference < 0 && recurring) {
     const nextYear = new Date(targetDate);
     nextYear.setFullYear(nextYear.getFullYear() + 1);
     difference = nextYear.getTime() - now;
@@ -41,7 +42,7 @@ function calculateTimeLeft(targetDate: string): TimeLeft {
   };
 }
 
-export default function CountdownCard({ title, date, emoji, index }: CountdownCardProps) {
+export default function CountdownCard({ title, date, emoji, index, recurring = true }: CountdownCardProps) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 });
   const [mounted, setMounted] = useState(false);
   const { theme } = useTheme();
@@ -50,20 +51,21 @@ export default function CountdownCard({ title, date, emoji, index }: CountdownCa
   useEffect(() => {
     // eslint-disable-next-line
     setMounted(true);
-    setTimeLeft(calculateTimeLeft(date));
+    setTimeLeft(calculateTimeLeft(date, recurring));
 
     const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft(date));
+      setTimeLeft(calculateTimeLeft(date, recurring));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [date]);
+  }, [date, recurring]);
 
   if (!mounted) {
     return null;
   }
 
-  const isToday = timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0;
+  const isToday = timeLeft.total >= 0 && timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0;
+  const hasPassed = timeLeft.total < 0;
 
   return (
     <motion.div
@@ -117,10 +119,15 @@ export default function CountdownCard({ title, date, emoji, index }: CountdownCa
           month: 'long',
           day: 'numeric'
         })}
+        {!recurring && hasPassed && (
+          <div className={`text-xs mt-1 ${isDark ? 'text-purple-400/60' : 'text-rose-400/60'}`}>
+            (Past event)
+          </div>
+        )}
       </div>
 
       {/* Today celebration */}
-      {isToday && (
+      {isToday && !hasPassed && (
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}

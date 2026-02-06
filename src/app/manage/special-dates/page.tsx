@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import AnimatedBackground from '@/components/AnimatedBackground';
+
 import { useTheme } from '@/context/ThemeContext';
 import { useData } from '@/context/DataContext';
 import Link from 'next/link';
@@ -31,7 +31,7 @@ export default function ManageSpecialDatesPage() {
 
   return (
     <main className="min-h-screen relative overflow-hidden">
-      <AnimatedBackground />
+
 
       <div className="relative z-10 px-4 py-8 max-w-2xl mx-auto min-h-screen">
         {/* Back button */}
@@ -62,8 +62,8 @@ export default function ManageSpecialDatesPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
           className={`rounded-2xl p-6 mb-6 ${isDark
-              ? 'bg-slate-800/80 border border-purple-500/30'
-              : 'bg-white/80 border border-pink-200'
+            ? 'bg-slate-800/80 border border-purple-500/30'
+            : 'bg-white/80 border border-pink-200'
             }`}
         >
           <h2 className={`text-lg font-semibold mb-4 ${isDark ? 'text-pink-300' : 'text-rose-700'}`}>
@@ -81,8 +81,8 @@ export default function ManageSpecialDatesPage() {
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Our Anniversary"
                 className={`w-full p-3 rounded-xl border transition-colors ${isDark
-                    ? 'bg-slate-900/50 border-purple-500/30 text-pink-100 placeholder-purple-400/50'
-                    : 'bg-pink-50 border-pink-200 text-rose-800 placeholder-pink-300'
+                  ? 'bg-slate-900/50 border-purple-500/30 text-pink-100 placeholder-purple-400/50'
+                  : 'bg-pink-50 border-pink-200 text-rose-800 placeholder-pink-300'
                   }`}
               />
             </div>
@@ -96,8 +96,8 @@ export default function ManageSpecialDatesPage() {
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className={`w-full p-3 rounded-xl border transition-colors ${isDark
-                    ? 'bg-slate-900/50 border-purple-500/30 text-pink-100'
-                    : 'bg-pink-50 border-pink-200 text-rose-800'
+                  ? 'bg-slate-900/50 border-purple-500/30 text-pink-100'
+                  : 'bg-pink-50 border-pink-200 text-rose-800'
                   }`}
               />
             </div>
@@ -112,12 +112,12 @@ export default function ManageSpecialDatesPage() {
                     key={e}
                     onClick={() => setEmoji(e)}
                     className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${emoji === e
-                        ? isDark
-                          ? 'bg-pink-500 ring-2 ring-pink-300'
-                          : 'bg-rose-500 ring-2 ring-rose-300'
-                        : isDark
-                          ? 'bg-slate-700 hover:bg-slate-600'
-                          : 'bg-pink-100 hover:bg-pink-200'
+                      ? isDark
+                        ? 'bg-pink-500 ring-2 ring-pink-300'
+                        : 'bg-rose-500 ring-2 ring-rose-300'
+                      : isDark
+                        ? 'bg-slate-700 hover:bg-slate-600'
+                        : 'bg-pink-100 hover:bg-pink-200'
                       }`}
                   >
                     {e}
@@ -130,8 +130,8 @@ export default function ManageSpecialDatesPage() {
               <button
                 onClick={() => setRecurring(!recurring)}
                 className={`w-6 h-6 rounded border flex items-center justify-center ${recurring
-                    ? isDark ? 'bg-pink-500 border-pink-400' : 'bg-rose-500 border-rose-400'
-                    : isDark ? 'bg-slate-700 border-purple-500/30' : 'bg-pink-50 border-pink-200'
+                  ? isDark ? 'bg-pink-500 border-pink-400' : 'bg-rose-500 border-rose-400'
+                  : isDark ? 'bg-slate-700 border-purple-500/30' : 'bg-pink-50 border-pink-200'
                   }`}
               >
                 {recurring && <span className="text-white text-sm">✓</span>}
@@ -146,12 +146,12 @@ export default function ManageSpecialDatesPage() {
             onClick={handleAdd}
             disabled={!title.trim() || !date}
             className={`mt-6 px-6 py-2 rounded-xl font-medium transition-all ${title.trim() && date
-                ? isDark
-                  ? 'bg-pink-500 hover:bg-pink-400 text-white'
-                  : 'bg-rose-500 hover:bg-rose-400 text-white'
-                : isDark
-                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                  : 'bg-pink-100 text-pink-300 cursor-not-allowed'
+              ? isDark
+                ? 'bg-pink-500 hover:bg-pink-400 text-white'
+                : 'bg-rose-500 hover:bg-rose-400 text-white'
+              : isDark
+                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                : 'bg-pink-100 text-pink-300 cursor-not-allowed'
               }`}
           >
             + Add Special Date
@@ -175,8 +175,8 @@ export default function ManageSpecialDatesPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className={`flex items-center gap-4 p-4 rounded-xl ${isDark
-                    ? 'bg-slate-800/60 border border-purple-500/20'
-                    : 'bg-white/60 border border-pink-200/50'
+                  ? 'bg-slate-800/60 border border-purple-500/20'
+                  : 'bg-white/60 border border-pink-200/50'
                   }`}
               >
                 <span className="text-2xl">{sd.emoji}</span>
@@ -194,8 +194,8 @@ export default function ManageSpecialDatesPage() {
                 <button
                   onClick={() => removeSpecialDate(sd.id)}
                   className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDark
-                      ? 'bg-red-900/50 hover:bg-red-800/70 text-red-300'
-                      : 'bg-red-100 hover:bg-red-200 text-red-500'
+                    ? 'bg-red-900/50 hover:bg-red-800/70 text-red-300'
+                    : 'bg-red-100 hover:bg-red-200 text-red-500'
                     }`}
                 >
                   ✕

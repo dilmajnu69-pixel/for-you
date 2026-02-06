@@ -44,7 +44,7 @@ export default function AnimatedBackground({ enableInteractivity = false }: { en
 
   return (
     <>
-      {/* Ancient Scroll Modal */}
+      {/* Premium Romantic Letter Modal */}
       <AnimatePresence>
         {showScroll && (
           <motion.div
@@ -52,41 +52,110 @@ export default function AnimatedBackground({ enableInteractivity = false }: { en
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowScroll(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm cursor-pointer pointer-events-auto"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-md cursor-pointer pointer-events-auto"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 30 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 0, scale: 0.9, y: 40, rotate: -2 }}
+              animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 40, rotate: 2 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-lg bg-[#f4e4bc] p-8 md:p-12 rounded-lg shadow-2xl overflow-hidden"
+              className={`relative w-full max-w-2xl rounded-sm shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden max-h-[85vh] flex flex-col transition-colors duration-500 ${isDark ? 'bg-[#2a1a2a] border-purple-500/30' : 'bg-[#fffcf5] border-pink-200'
+                } border-8`}
               style={{
-                backgroundImage: 'url("https://www.transparenttextures.com/patterns/aged-paper.png"), linear-gradient(to bottom, #f4e4bc, #e6d2a0)',
-                boxShadow: '0 0 20px rgba(0,0,0,0.3), inset 0 0 60px rgba(160, 100, 40, 0.3)'
+                backgroundImage: isDark
+                  ? 'url("https://www.transparenttextures.com/patterns/dark-matter.png")'
+                  : 'url("https://www.transparenttextures.com/patterns/stitched-wool.png")',
               }}
             >
-              {/* Scroll Rollers */}
-              <div className="absolute top-0 left-0 right-0 h-6 bg-[#8b5a2b] shadow-md rounded-full -mt-3" />
-              <div className="absolute bottom-0 left-0 right-0 h-6 bg-[#8b5a2b] shadow-md rounded-full -mb-3" />
+              {/* Decorative Border Inner */}
+              <div className={`absolute inset-2 border transition-colors duration-500 ${isDark ? 'border-purple-400/20' : 'border-pink-300/30'} pointer-events-none`} />
 
-              {/* Content */}
-              <div className="text-center font-serif text-[#5c3a1e]">
-                <h2 className="text-3xl font-bold mb-4 border-b-2 border-[#5c3a1e]/20 pb-2">{loveLetterData.title}</h2>
-                {loveLetterData.paragraphs.map((paragraph, index) => (
-                  <p key={index} className="text-lg leading-relaxed mb-6 italic">
-                    {paragraph}
-                  </p>
+              {/* Decorative Hearts in background */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-10">
+                {[...Array(6)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{
+                      y: [0, -100],
+                      x: [0, Math.sin(i) * 20],
+                      opacity: [0, 1, 0],
+                      scale: [0.5, 1, 0.5]
+                    }}
+                    transition={{
+                      duration: 5 + i,
+                      repeat: Infinity,
+                      delay: i * 0.8,
+                      ease: "linear"
+                    }}
+                    className="absolute text-2xl"
+                    style={{
+                      left: `${15 + i * 15}%`,
+                      bottom: "-10%"
+                    }}
+                  >
+                    ❤️
+                  </motion.div>
                 ))}
-                <p className="text-sm opacity-70">
-                  {loveLetterData.signature}
-                </p>
+              </div>
+
+              {/* Header Decorative Element */}
+              <div className="pt-8 pb-4 text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.5, type: 'spring' }}
+                  className="inline-block"
+                >
+                  <span className="text-4xl">💌</span>
+                </motion.div>
+              </div>
+
+              {/* Content area */}
+              <div className={`flex-1 overflow-y-auto px-6 md:px-12 pb-12 transition-colors duration-500 ${isDark ? 'text-pink-100' : 'text-rose-900'} scrollbar-hide`}>
+                <h2 className={`text-3xl md:text-4xl font-serif font-bold text-center mb-8 tracking-wide transition-colors duration-500 ${isDark ? 'text-pink-300' : 'text-rose-800'}`}>
+                  {loveLetterData.title}
+                </h2>
+
+                <div className="space-y-6 font-serif text-lg md:text-xl leading-relaxed italic text-justify">
+                  {loveLetterData.paragraphs.map((paragraph, index) => (
+                    <motion.p
+                      key={index}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.6 + index * 0.2 }}
+                    >
+                      {paragraph}
+                    </motion.p>
+                  ))}
+                </div>
+
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1.5 }}
+                  className="mt-12 text-center"
+                >
+                  <div className={`w-24 h-px mx-auto mb-6 transition-colors duration-500 ${isDark ? 'bg-purple-500/50' : 'bg-pink-300/50'}`} />
+                  <p className="text-2xl font-serif italic">
+                    {loveLetterData.signature}
+                  </p>
+
+                  {/* Decorative "Wax Seal" */}
+                  <div className="mt-8 flex justify-center">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-colors duration-500 ${isDark ? 'bg-purple-700 text-pink-200' : 'bg-rose-600 text-white'
+                      }`}>
+                      ❤️
+                    </div>
+                  </div>
+                </motion.div>
               </div>
 
               {/* Close Button */}
               <button
                 onClick={() => setShowScroll(false)}
-                className="absolute top-4 right-4 text-[#5c3a1e]/50 hover:text-[#5c3a1e] transition-colors"
+                className={`absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${isDark ? 'bg-purple-900/50 text-purple-300 hover:bg-purple-800' : 'bg-pink-100 text-rose-500 hover:bg-pink-200'
+                  }`}
               >
                 ✕
               </button>
@@ -213,6 +282,9 @@ export default function AnimatedBackground({ enableInteractivity = false }: { en
         </motion.div>
 
         {/* Cute Duck - bottom right with counter-rotation */}
+
+
+        {/* Cute Duck - bottom right with counter-rotation */}
         <motion.div
           animate={{
             y: [0, -12, 0],
@@ -224,7 +296,7 @@ export default function AnimatedBackground({ enableInteractivity = false }: { en
             ease: 'easeInOut',
             delay: 0.5,
           }}
-          className="absolute bottom-8 right-8 md:bottom-16 md:right-16"
+          className="absolute bottom-20 right-8 md:bottom-24 md:right-16 z-50"
         >
           <Image
             src="/duck.png"
@@ -287,7 +359,7 @@ export default function AnimatedBackground({ enableInteractivity = false }: { en
             </motion.div>
           </>
         )}
-      </div>
+      </div >
     </>
   );
 }

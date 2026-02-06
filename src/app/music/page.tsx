@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AnimatedBackground from '@/components/AnimatedBackground';
+
 import { useTheme } from '@/context/ThemeContext';
 import Link from 'next/link';
 
@@ -71,7 +71,7 @@ export default function MusicPage() {
 
   return (
     <main className="min-h-screen relative overflow-hidden">
-      <AnimatedBackground />
+
 
       <div className="relative z-10 px-4 py-8 max-w-2xl mx-auto min-h-screen flex flex-col">
         {/* Back button */}

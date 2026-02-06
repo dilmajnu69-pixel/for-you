@@ -14,6 +14,18 @@ interface Photo {
   date: string;
 }
 
+/**
+ * Helper to transform Google Drive direct links into proxy links
+ */
+const getImageSrc = (src: string) => {
+  if (src.includes('drive.google.com')) {
+    const url = new URL(src);
+    const id = url.searchParams.get('id');
+    return `/api/drive-proxy?id=${id}`;
+  }
+  return src;
+};
+
 export default function GalleryPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
@@ -124,7 +136,7 @@ export default function GalleryPage() {
                     {/* Blurred Background for "Fill" effect */}
                     <div className="absolute inset-0 z-0">
                       <img
-                        src={currentPhoto.src}
+                        src={getImageSrc(currentPhoto.src)}
                         alt=""
                         className="w-full h-full object-cover blur-2xl opacity-40 scale-110"
                         referrerPolicy="no-referrer"
@@ -132,7 +144,7 @@ export default function GalleryPage() {
                     </div>
                     {/* Main Image - Fully Visible */}
                     <img
-                      src={currentPhoto.src}
+                      src={getImageSrc(currentPhoto.src)}
                       alt={currentPhoto.caption}
                       className="relative z-10 w-full h-full object-contain drop-shadow-md"
                       referrerPolicy="no-referrer"
@@ -152,26 +164,32 @@ export default function GalleryPage() {
             </AnimatePresence>
 
             {/* Caption overlay */}
-            <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 z-20 ${isDark
-              ? 'bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent'
-              : 'bg-gradient-to-t from-black/70 via-black/40 to-transparent'
-              }`}>
-              <motion.p
-                key={`caption-${currentIndex}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-white text-lg md:text-xl font-medium drop-shadow-md"
-              >
-                {currentPhoto.caption}
-              </motion.p>
-              <p className="text-white/80 text-sm mt-1 drop-shadow-sm">
-                {new Date(currentPhoto.date).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
+            {(currentPhoto.caption || currentPhoto.date) && (
+              <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 z-20 ${isDark
+                ? 'bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent'
+                : 'bg-gradient-to-t from-black/70 via-black/40 to-transparent'
+                }`}>
+                {currentPhoto.caption && (
+                  <motion.p
+                    key={`caption-${currentIndex}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-white text-lg md:text-xl font-medium drop-shadow-md"
+                  >
+                    {currentPhoto.caption}
+                  </motion.p>
+                )}
+                {currentPhoto.date && (
+                  <p className="text-white/80 text-sm mt-1 drop-shadow-sm">
+                    {new Date(currentPhoto.date).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right navigation button */}

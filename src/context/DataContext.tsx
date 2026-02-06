@@ -20,8 +20,8 @@ interface SpecialDate {
 interface Photo {
   id: number;
   src: string; // URL or path to image
-  caption: string;
-  date: string;
+  caption?: string;
+  date?: string;
   storagePath?: string; // Optional: path in Firebase Storage
 }
 
@@ -45,8 +45,8 @@ interface DataContextType {
   removeMessage: (id: number) => void;
   addSpecialDate: (title: string, date: string, emoji: string, recurring: boolean) => void;
   removeSpecialDate: (id: number) => void;
-  addPhoto: (fileOrUrl: File | string, caption: string, date: string) => Promise<{ success: boolean; error?: string }>;
-  updatePhoto: (id: number, fileOrUrl: File | string | null, caption: string, date: string) => Promise<{ success: boolean; error?: string }>;
+  addPhoto: (fileOrUrl: File | string, caption?: string, date?: string) => Promise<{ success: boolean; error?: string }>;
+  updatePhoto: (id: number, fileOrUrl: File | string | null, caption?: string, date?: string) => Promise<{ success: boolean; error?: string }>;
   removePhoto: (id: number) => Promise<void>;
   addSong: (title: string, artist: string, spotifyId: string) => void;
   removeSong: (id: number) => void;
@@ -71,70 +71,112 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Initial Data Load
   useEffect(() => {
-    // 1. Load LocalStorage items (legacy/local-only data)
-    const storedMessages = localStorage.getItem('messages');
-    const storedSpecialDates = localStorage.getItem('specialDates');
-    const storedSongs = localStorage.getItem('songs');
-
-    // eslint-disable-next-line
-    setMessages(storedMessages ? JSON.parse(storedMessages) : initialMessages.messages);
-    setSpecialDates(storedSpecialDates ? JSON.parse(storedSpecialDates) : initialSpecialDates.specialDates);
-    setSongs(storedSongs ? JSON.parse(storedSongs) : initialMusic.songs);
-
-    // 2. Load Photos from API (Persistent DB)
-    fetch('/api/photos')
+    // 1. Load Photos from API (Persistent DB)
+    const loadPhotos = fetch('/api/photos')
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          setPhotos(data);
-        }
+        if (Array.isArray(data)) setPhotos(data);
       })
-      .catch(err => console.error("Failed to load photos", err))
-      .finally(() => setLoadingConfig(prev => ({ ...prev, photos: false })));
+      .catch(err => console.error("Failed to load photos", err));
 
-    setIsLoaded(true);
+    // 2. Load JSON Data from API (Persistent Files)
+    const loadJsonData = async () => {
+      try {
+        const [msgRes, dateRes, musicRes] = await Promise.all([
+          fetch('/api/save-data?type=messages'),
+          fetch('/api/save-data?type=special-dates'),
+          fetch('/api/save-data?type=music')
+        ]);
+
+        if (msgRes.ok) {
+          const data = await msgRes.json();
+          if (Array.isArray(data)) setMessages(data);
+          else setMessages(initialMessages.messages);
+        } else {
+          setMessages(initialMessages.messages);
+        }
+
+        if (dateRes.ok) {
+          const data = await dateRes.json();
+          if (Array.isArray(data)) setSpecialDates(data);
+          else setSpecialDates(initialSpecialDates.specialDates);
+        } else {
+          setSpecialDates(initialSpecialDates.specialDates);
+        }
+
+        if (musicRes.ok) {
+          const data = await musicRes.json();
+          if (Array.isArray(data)) setSongs(data);
+          else setSongs(initialMusic.songs);
+        } else {
+          setSongs(initialMusic.songs);
+        }
+
+      } catch (error) {
+        console.error("Failed to load JSON data", error);
+        // Fallback to initial local data
+        setMessages(initialMessages.messages);
+        setSpecialDates(initialSpecialDates.specialDates);
+        setSongs(initialMusic.songs);
+      }
+    };
+
+    Promise.all([loadPhotos, loadJsonData()])
+      .finally(() => {
+        setLoadingConfig(prev => ({ ...prev, photos: false }));
+        setIsLoaded(true);
+      });
   }, []);
 
-  // Effects: Persist NON-PHOTO state changes to localStorage
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('messages', JSON.stringify(messages));
-    }
-  }, [messages, isLoaded]);
 
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('specialDates', JSON.stringify(specialDates));
-    }
-  }, [specialDates, isLoaded]);
 
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('songs', JSON.stringify(songs));
-    }
-  }, [songs, isLoaded]);
+  // CRUD Operations
 
   // CRUD Operations
 
   const addMessage = (text: string, type: string = 'note') => {
     const newId = Math.max(0, ...messages.map(m => m.id)) + 1;
-    setMessages([...messages, { id: newId, text, type }]);
+    const newMessages = [...messages, { id: newId, text, type }];
+    setMessages(newMessages);
+    fetch('/api/save-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'messages', data: newMessages }),
+    }).catch(err => console.error('Failed to save messages:', err));
   };
 
   const removeMessage = (id: number) => {
-    setMessages(messages.filter(m => m.id !== id));
+    const newMessages = messages.filter(m => m.id !== id);
+    setMessages(newMessages);
+    fetch('/api/save-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'messages', data: newMessages }),
+    }).catch(err => console.error('Failed to save messages:', err));
   };
 
   const addSpecialDate = (title: string, date: string, emoji: string, recurring: boolean) => {
     const newId = Math.max(0, ...specialDates.map(s => s.id)) + 1;
-    setSpecialDates([...specialDates, { id: newId, title, date, emoji, recurring }]);
+    const newDates = [...specialDates, { id: newId, title, date, emoji, recurring }];
+    setSpecialDates(newDates);
+    fetch('/api/save-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'special-dates', data: newDates }),
+    }).catch(err => console.error('Failed to save special dates:', err));
   };
 
   const removeSpecialDate = (id: number) => {
-    setSpecialDates(specialDates.filter(s => s.id !== id));
+    const newDates = specialDates.filter(s => s.id !== id);
+    setSpecialDates(newDates);
+    fetch('/api/save-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'special-dates', data: newDates }),
+    }).catch(err => console.error('Failed to save special dates:', err));
   };
 
-  const addPhoto = async (fileOrUrl: File | string, caption: string, date: string) => {
+  const addPhoto = async (fileOrUrl: File | string, caption?: string, date?: string) => {
     try {
       const formData = new FormData();
       if (typeof fileOrUrl === 'string') {
@@ -142,8 +184,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       } else {
         formData.append('file', fileOrUrl);
       }
-      formData.append('caption', caption);
-      formData.append('date', date);
+      if (caption) formData.append('caption', caption);
+      if (date) formData.append('date', date);
 
       const res = await fetch('/api/photos', {
         method: 'POST',
@@ -164,7 +206,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updatePhoto = async (id: number, fileOrUrl: File | string | null, caption: string, date: string) => {
+  const updatePhoto = async (id: number, fileOrUrl: File | string | null, caption?: string, date?: string) => {
     try {
       const formData = new FormData();
       if (fileOrUrl) {
@@ -174,8 +216,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
           formData.append('file', fileOrUrl);
         }
       }
-      formData.append('caption', caption);
-      formData.append('date', date);
+      if (caption !== undefined) formData.append('caption', caption);
+      if (date !== undefined) formData.append('date', date);
 
       const res = await fetch(`/api/photos/${id}`, {
         method: 'PUT',
@@ -213,11 +255,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addSong = (title: string, artist: string, spotifyId: string) => {
     const newId = Math.max(0, ...songs.map(s => s.id)) + 1;
-    setSongs([...songs, { id: newId, title, artist, spotifyId }]);
+    const newSongs = [...songs, { id: newId, title, artist, spotifyId }];
+    setSongs(newSongs);
+    fetch('/api/save-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'music', data: newSongs }),
+    }).catch(err => console.error('Failed to save music:', err));
   };
 
   const removeSong = (id: number) => {
-    setSongs(songs.filter(s => s.id !== id));
+    const newSongs = songs.filter(s => s.id !== id);
+    setSongs(newSongs);
+    fetch('/api/save-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'music', data: newSongs }),
+    }).catch(err => console.error('Failed to save music:', err));
   };
 
   return (

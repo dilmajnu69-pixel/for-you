@@ -80,7 +80,7 @@ textarea {
 
 /* Custom scrollbar for romantic theme */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -88,12 +88,12 @@ textarea {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #f9a8d4, #f472b6);
+  background: linear-gradient(to bottom, #fbcfe8, #f472b6);
   border-radius: 10px;
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #a855f7, #7c3aed);
+  background: linear-gradient(to bottom, #a855f7, #6d28d9);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -101,7 +101,7 @@ textarea {
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #8b5cf6, #6d28d9);
+  background: linear-gradient(to bottom, #8b5cf6, #5b21b6);
 }
 
 /* Shimmer animation */

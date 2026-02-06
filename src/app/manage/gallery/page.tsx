@@ -16,6 +16,22 @@ const Spinner = () => (
   </svg>
 );
 
+/**
+ * Helper to transform Google Drive direct links into proxy links
+ */
+const getImageSrc = (src: string) => {
+  if (src && src.includes('drive.google.com')) {
+    try {
+      const url = new URL(src);
+      const id = url.searchParams.get('id');
+      return id ? `/api/drive-proxy?id=${id}` : src;
+    } catch (e) {
+      return src;
+    }
+  }
+  return src;
+};
+
 export default function ManageGalleryPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -38,7 +54,7 @@ export default function ManageGalleryPage() {
   const [editDate, setEditDate] = useState('');
 
   const handleAdd = async () => {
-    if ((imageUrl.trim() || selectedFile) && caption.trim() && date) {
+    if (imageUrl.trim() || selectedFile) {
       setIsUploading(true);
       const toastId = toast.loading('Uploading photo...');
 
@@ -186,15 +202,15 @@ export default function ManageGalleryPage() {
 
             {imageUrl && (
               <div className={`rounded-xl overflow-hidden border ${isDark ? 'border-purple-500/30' : 'border-pink-200'}`}>
-                <img src={imageUrl} alt="Preview" className="w-full h-40 object-cover" onError={(e) => (e.target as HTMLImageElement).src = 'data:image/svg+xml,...'} referrerPolicy="no-referrer" />
+                <img src={getImageSrc(imageUrl)} alt="Preview" className="w-full h-40 object-cover" onError={(e) => (e.target as HTMLImageElement).src = 'data:image/svg+xml,...'} referrerPolicy="no-referrer" />
               </div>
             )}
 
-            <div><label className={`block text-sm mb-1 ${isDark ? 'text-purple-300' : 'text-pink-500'}`}>Caption</label><input type="text" value={caption} onChange={(e) => setCaption(e.target.value)} className={`w-full p-3 rounded-xl border ${isDark ? 'bg-slate-900/50 border-purple-500/30 text-pink-100' : 'bg-pink-50 border-pink-200 text-rose-800'}`} /></div>
-            <div><label className={`block text-sm mb-1 ${isDark ? 'text-purple-300' : 'text-pink-500'}`}>Date</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`w-full p-3 rounded-xl border ${isDark ? 'bg-slate-900/50 border-purple-500/30 text-pink-100' : 'bg-pink-50 border-pink-200 text-rose-800'}`} /></div>
+            <div><label className={`block text-sm mb-1 ${isDark ? 'text-purple-300' : 'text-pink-500'}`}>Caption (Optional)</label><input type="text" value={caption} onChange={(e) => setCaption(e.target.value)} className={`w-full p-3 rounded-xl border ${isDark ? 'bg-slate-900/50 border-purple-500/30 text-pink-100' : 'bg-pink-50 border-pink-200 text-rose-800'}`} /></div>
+            <div><label className={`block text-sm mb-1 ${isDark ? 'text-purple-300' : 'text-pink-500'}`}>Date (Optional)</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`w-full p-3 rounded-xl border ${isDark ? 'bg-slate-900/50 border-purple-500/30 text-pink-100' : 'bg-pink-50 border-pink-200 text-rose-800'}`} /></div>
           </div>
 
-          <button onClick={handleAdd} disabled={(!imageUrl.trim() && !selectedFile) || !caption.trim() || !date || isUploading} className={`mt-6 px-6 py-2 rounded-xl font-medium w-full flex justify-center items-center gap-2 ${((imageUrl || selectedFile) && caption && date && !isUploading) ? (isDark ? 'bg-pink-500 text-white' : 'bg-rose-500 text-white') : (isDark ? 'bg-slate-700 text-slate-500' : 'bg-pink-100 text-pink-300')}`}>
+          <button onClick={handleAdd} disabled={(!imageUrl.trim() && !selectedFile) || isUploading} className={`mt-6 px-6 py-2 rounded-xl font-medium w-full flex justify-center items-center gap-2 ${((imageUrl || selectedFile) && !isUploading) ? (isDark ? 'bg-pink-500 text-white' : 'bg-rose-500 text-white') : (isDark ? 'bg-slate-700 text-slate-500' : 'bg-pink-100 text-pink-300')}`}>
             {isUploading ? (
               <>
                 <Spinner />
@@ -213,11 +229,11 @@ export default function ManageGalleryPage() {
             {photos.map((photo, index) => (
               <motion.div key={photo.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.05 }} className={`relative rounded-xl overflow-hidden ${isDark ? 'bg-slate-800/60 border border-purple-500/20' : 'bg-white/60 border border-pink-200/50'}`}>
                 <div className="aspect-square relative">
-                  <img src={photo.src} alt={photo.caption} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={getImageSrc(photo.src)} alt={photo.caption} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div className="p-3">
-                  <p className={`text-sm font-medium truncate ${isDark ? 'text-pink-200' : 'text-rose-700'}`}>{photo.caption}</p>
-                  <p className={`text-xs ${isDark ? 'text-purple-400' : 'text-pink-400'}`}>{new Date(photo.date).toLocaleDateString()}</p>
+                  {photo.caption && <p className={`text-sm font-medium truncate ${isDark ? 'text-pink-200' : 'text-rose-700'}`}>{photo.caption}</p>}
+                  {photo.date && <p className={`text-xs ${isDark ? 'text-purple-400' : 'text-pink-400'}`}>{new Date(photo.date).toLocaleDateString()}</p>}
                 </div>
 
                 {/* Pen Icon (Edit) */}
@@ -262,17 +278,17 @@ export default function ManageGalleryPage() {
 
                 {editImageUrl && (
                   <div className="h-32 w-full rounded overflow-hidden bg-gray-100">
-                    <img src={editImageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src={getImageSrc(editImageUrl)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                 )}
 
                 <div>
-                  <label className="text-xs uppercase font-bold text-gray-500 block mb-1">Caption</label>
+                  <label className="text-xs uppercase font-bold text-gray-500 block mb-1">Caption (Optional)</label>
                   <input type="text" value={editCaption} onChange={(e) => setEditCaption(e.target.value)} className={`w-full p-2 rounded border ${isDark ? 'bg-slate-900 text-white border-slate-700' : ''}`} />
                 </div>
 
                 <div>
-                  <label className="text-xs uppercase font-bold text-gray-500 block mb-1">Date</label>
+                  <label className="text-xs uppercase font-bold text-gray-500 block mb-1">Date (Optional)</label>
                   <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className={`w-full p-2 rounded border ${isDark ? 'bg-slate-900 text-white border-slate-700' : ''}`} />
                 </div>
               </div>

@@ -1,0 +1,99 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { google } from 'googleapis';
+
+const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
+
+/**
+ * Cached Drive client for the proxy
+ */
+let driveClient: any = null;
+
+const getDriveClient = () => {
+  if (driveClient) return driveClient;
+
+  const serviceAccountEmail = process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+
+  if (serviceAccountEmail && privateKey) {
+    try {
+      const auth = new google.auth.JWT({
+        email: serviceAccountEmail,
+        key: privateKey.replace(/\\n/g, '\n'),
+        scopes: SCOPES,
+      });
+      driveClient = google.drive({ version: 'v3', auth });
+      return driveClient;
+    } catch (error) {
+      console.error('[Proxy] Service Account init failed:', error);
+    }
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+  if (clientId && clientSecret && refreshToken) {
+    try {
+      const auth = new google.auth.OAuth2(clientId, clientSecret);
+      auth.setCredentials({ refresh_token: refreshToken });
+      driveClient = google.drive({ version: 'v3', auth });
+      return driveClient;
+    } catch (error) {
+      console.error('[Proxy] OAuth init failed:', error);
+    }
+  }
+
+  return null;
+};
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const fileId = searchParams.get('id');
+
+  if (!fileId) {
+    return NextResponse.json({ error: 'Missing file ID' }, { status: 400 });
+  }
+
+  const drive = getDriveClient();
+  if (!drive) {
+    return NextResponse.json({ error: 'Drive client not configured' }, { status: 500 });
+  }
+
+  try {
+    // 1. Get file metadata for Content-Type
+    const metadata = await drive.files.get({
+      fileId: fileId,
+      fields: 'mimeType, name',
+    });
+
+    const mimeType = metadata.data.mimeType || 'application/octet-stream';
+
+    // 2. Fetch file content as a stream
+    const response = await drive.files.get(
+      { fileId: fileId, alt: 'media' },
+      { responseType: 'stream' }
+    );
+
+    // 3. Create a readable stream for Next.js response
+    const stream = response.data;
+
+    // We can't use new Response(stream) directly in Next.js App Router easily 
+    // without converting to a Web Stream or using a helper.
+    // However, we can use the following approach:
+
+    return new Response(stream as any, {
+      headers: {
+        'Content-Type': mimeType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Content-Disposition': `inline; filename="${metadata.data.name}"`,
+      },
+    });
+
+  } catch (error: any) {
+    console.error(`[Proxy] Failed to fetch file ${fileId}:`, error.message);
+    return NextResponse.json(
+      { error: 'Failed to fetch image from Google Drive' },
+      { status: error.code === 404 ? 404 : 500 }
+    );
+  }
+}
