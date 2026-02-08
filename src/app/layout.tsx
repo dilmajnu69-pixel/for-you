@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased transition-colors duration-300">
+      <body className="antialiased transition-colors duration-300" suppressHydrationWarning>
         <ClientLayout>
           {children}
         </ClientLayout>

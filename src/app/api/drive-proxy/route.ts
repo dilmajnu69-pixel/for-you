@@ -74,14 +74,20 @@ export async function GET(req: NextRequest) {
       { responseType: 'stream' }
     );
 
-    // 3. Create a readable stream for Next.js response
-    const stream = response.data;
+    // 3. Convert Node.js Readable stream to Web ReadableStream
+    const nodeStream = response.data;
+    const webStream = new ReadableStream({
+      start(controller) {
+        nodeStream.on('data', (chunk: any) => controller.enqueue(chunk));
+        nodeStream.on('end', () => controller.close());
+        nodeStream.on('error', (err: any) => controller.error(err));
+      },
+      cancel() {
+        nodeStream.destroy();
+      },
+    });
 
-    // We can't use new Response(stream) directly in Next.js App Router easily 
-    // without converting to a Web Stream or using a helper.
-    // However, we can use the following approach:
-
-    return new Response(stream as any, {
+    return new Response(webStream, {
       headers: {
         'Content-Type': mimeType,
         'Cache-Control': 'public, max-age=31536000, immutable',
