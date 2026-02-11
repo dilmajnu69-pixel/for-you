@@ -18,15 +18,27 @@ interface Photo {
  * Helper to transform Google Drive direct links into proxy links
  */
 const getImageSrc = (src: string, useFallback: boolean = false) => {
-  if (src.includes('drive.google.com') && !useFallback) {
+  if (!src) return '';
+
+  // Extract Drive ID if it's a Google Drive link
+  let driveId = '';
+  if (src.includes('drive.google.com')) {
     try {
       const url = new URL(src);
-      const id = url.searchParams.get('id');
-      if (id) return `/api/drive-proxy?id=${id}`;
-    } catch (e) {
-      console.error('Invalid URL in getImageSrc:', src);
-    }
+      driveId = url.searchParams.get('id') || '';
+    } catch (e) { }
   }
+
+  // Use Proxy as primary method
+  if (driveId && !useFallback) {
+    return `/api/drive-proxy?id=${driveId}`;
+  }
+
+  // Use reliable public direct link as secondary fallback
+  if (driveId && useFallback) {
+    return `https://lh3.googleusercontent.com/d/${driveId}`;
+  }
+
   return src;
 };
 
@@ -36,28 +48,49 @@ export default function GalleryPage() {
   const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
   const [proxyError, setProxyError] = useState<any>(null);
   const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({});
+  const [progress, setProgress] = useState(0);
+  const [key, setKey] = useState(0);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const { photos } = useData();
 
   const nextPhoto = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % photos.length);
+    setKey(prev => prev + 1);
+    setProgress(0);
   }, [photos.length]);
 
   const prevPhoto = () => {
     setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length);
+    setKey(prev => prev + 1);
+    setProgress(0);
   };
 
   const goToPhoto = (index: number) => {
     setCurrentIndex(index);
+    setKey(prev => prev + 1);
+    setProgress(0);
     setIsAutoPlaying(false);
   };
 
-  // Auto-advance slideshow
+  // Auto-advance slideshow with progress
   useEffect(() => {
     if (!isAutoPlaying || photos.length <= 1) return;
 
-    const timer = setInterval(nextPhoto, 4000);
+    const duration = 15000; // 15 seconds as requested
+    const interval = 50;
+    const increment = (100 / duration) * interval;
+
+    const timer = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          nextPhoto();
+          return 0;
+        }
+        return prev + increment;
+      });
+    }, interval);
+
     return () => clearInterval(timer);
   }, [isAutoPlaying, photos.length, nextPhoto]);
 
@@ -127,127 +160,137 @@ export default function GalleryPage() {
             </button>
           )}
 
-          {/* Photo container */}
-          <div className="relative flex-1 aspect-[4/3] md:aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black/5">
-            {photos.map((photo, index) => {
-              const isActive = index === currentIndex;
-              const isLoaded = loadedImages[photo.id];
-              const isFailed = failedImages[photo.id];
+          {/* Photo container with animated border */}
+          <div
+            className="relative flex-1 p-[3px] rounded-3xl"
+            style={{
+              background: `conic-gradient(from 0deg, ${isDark ? '#a855f7' : '#e11d48'} ${progress}%, transparent ${progress}%, transparent 100%)`,
+            }}
+          >
+            <div className={`relative w-full h-full aspect-[4/3] md:aspect-video rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm transition-colors duration-300 ${isDark
+              ? 'bg-gradient-to-br from-slate-800/90 via-purple-900/80 to-slate-800/90'
+              : 'bg-gradient-to-br from-pink-100 via-rose-50 to-pink-50'
+              }`}>
+              {photos.map((photo, index) => {
+                const isActive = index === currentIndex;
+                const isLoaded = loadedImages[photo.id];
+                const isFailed = failedImages[photo.id];
 
-              return (
-                <motion.div
-                  key={photo.id}
-                  initial={false}
-                  animate={{
-                    opacity: isActive ? 1 : 0,
-                    scale: isActive ? 1 : 1.05,
-                    zIndex: isActive ? 10 : 0,
-                  }}
-                  transition={{ duration: 0.5, ease: "easeInOut" }}
-                  className="absolute inset-0"
-                  style={{
-                    pointerEvents: isActive ? 'auto' : 'none',
-                    visibility: (isActive || index === (currentIndex + 1) % photos.length || index === (currentIndex - 1 + photos.length) % photos.length) ? 'visible' : 'hidden'
-                  }}
-                >
-                  {photo.src ? (
-                    <>
-                      {/* Blurred Background for "Fill" effect */}
-                      <div className="absolute inset-0 z-0">
+                return (
+                  <motion.div
+                    key={photo.id}
+                    initial={false}
+                    animate={{
+                      opacity: isActive ? 1 : 0,
+                      scale: isActive ? 1 : 1.05,
+                      zIndex: isActive ? 10 : 0,
+                    }}
+                    transition={{ duration: 0.8, ease: "easeInOut" }}
+                    className="absolute inset-0"
+                    style={{
+                      pointerEvents: isActive ? 'auto' : 'none',
+                      visibility: (isActive || index === (currentIndex + 1) % photos.length || index === (currentIndex - 1 + photos.length) % photos.length) ? 'visible' : 'hidden'
+                    }}
+                  >
+                    {photo.src ? (
+                      <>
+                        {/* Blurred Background for "Fill" effect */}
+                        <div className="absolute inset-0 z-0">
+                          <img
+                            src={getImageSrc(photo.src, isFailed)}
+                            alt=""
+                            className="w-full h-full object-cover blur-2xl opacity-40 scale-110"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+
+                        {/* Loading Spinner (only for active image if not yet loaded) */}
+                        {isActive && !isLoaded && !isFailed && (
+                          <div className="absolute inset-0 z-20 flex items-center justify-center">
+                            <div className={`w-10 h-10 border-4 border-t-transparent rounded-full animate-spin ${isDark ? 'border-pink-400' : 'border-rose-500'
+                              }`}></div>
+                          </div>
+                        )}
+
+                        {/* Main Image */}
                         <img
                           src={getImageSrc(photo.src, isFailed)}
-                          alt=""
-                          className="w-full h-full object-cover blur-2xl opacity-40 scale-110"
+                          alt={photo.caption}
+                          className={`relative z-10 w-full h-full object-contain drop-shadow-md transition-opacity duration-300 ${isActive && !isLoaded ? 'opacity-0' : 'opacity-100'
+                            }`}
                           referrerPolicy="no-referrer"
-                        />
-                      </div>
-
-                      {/* Loading Spinner (only for active image if not yet loaded) */}
-                      {isActive && !isLoaded && !isFailed && (
-                        <div className="absolute inset-0 z-20 flex items-center justify-center">
-                          <div className={`w-10 h-10 border-4 border-t-transparent rounded-full animate-spin ${isDark ? 'border-pink-400' : 'border-rose-500'
-                            }`}></div>
-                        </div>
-                      )}
-
-                      {/* Main Image */}
-                      <img
-                        src={getImageSrc(photo.src, isFailed)}
-                        alt={photo.caption}
-                        className={`relative z-10 w-full h-full object-contain drop-shadow-md transition-opacity duration-300 ${isActive && !isLoaded ? 'opacity-0' : 'opacity-100'
-                          }`}
-                        referrerPolicy="no-referrer"
-                        onLoad={() => setLoadedImages(prev => ({ ...prev, [photo.id]: true }))}
-                        onError={async () => {
-                          if (!isFailed) {
-                            if (isActive && !proxyError) {
-                              try {
-                                const res = await fetch(getImageSrc(photo.src));
-                                if (!res.ok) {
-                                  const errorData = await res.json();
-                                  setProxyError(errorData);
-                                }
-                              } catch (e) { }
+                          onLoad={() => setLoadedImages(prev => ({ ...prev, [photo.id]: true }))}
+                          onError={async () => {
+                            if (!isFailed) {
+                              if (isActive && !proxyError) {
+                                try {
+                                  const res = await fetch(getImageSrc(photo.src));
+                                  if (!res.ok) {
+                                    const errorData = await res.json();
+                                    setProxyError(errorData);
+                                  }
+                                } catch (e) { }
+                              }
+                              setFailedImages(prev => ({ ...prev, [photo.id]: true }));
                             }
-                            setFailedImages(prev => ({ ...prev, [photo.id]: true }));
-                          }
-                        }}
-                      />
+                          }}
+                        />
 
-                      {/* Overlay Error Message */}
-                      {isActive && proxyError && (
-                        <div className="absolute inset-x-0 top-0 z-30 p-2 bg-red-500/90 text-white text-[10px] text-center backdrop-blur-sm">
-                          ⚠️ Drive Connection Issue: <strong>{proxyError.attempts?.[0]?.message || proxyError.details || 'unknown'}</strong>.
-                          Check your Vercel Environment Variables.
+                        {/* Overlay Error Message */}
+                        {isActive && proxyError && (
+                          <div className="absolute inset-x-0 top-0 z-30 p-2 bg-red-500/90 text-white text-[10px] text-center backdrop-blur-sm">
+                            ⚠️ Drive Connection Issue: <strong>{proxyError.attempts?.[0]?.message || proxyError.details || 'unknown'}</strong>.
+                            Check your Vercel Environment Variables.
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className={`w-full h-full flex items-center justify-center ${isDark
+                        ? 'bg-gradient-to-br from-slate-800 via-purple-900/50 to-slate-800'
+                        : 'bg-gradient-to-br from-pink-100 via-rose-100 to-pink-50'
+                        }`}>
+                        <div className="text-center p-8">
+                          <div className="text-6xl mb-4">📷</div>
                         </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className={`w-full h-full flex items-center justify-center ${isDark
-                      ? 'bg-gradient-to-br from-slate-800 via-purple-900/50 to-slate-800'
-                      : 'bg-gradient-to-br from-pink-100 via-rose-100 to-pink-50'
-                      }`}>
-                      <div className="text-center p-8">
-                        <div className="text-6xl mb-4">📷</div>
                       </div>
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
-
-            {/* Shared Caption overlay */}
-            {(currentPhoto?.caption || currentPhoto?.date) && (
-              <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 z-20 ${isDark
-                ? 'bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent'
-                : 'bg-gradient-to-t from-black/70 via-black/40 to-transparent'
-                }`}>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentIndex}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {currentPhoto.caption && (
-                      <p className="text-white text-lg md:text-xl font-medium drop-shadow-md">
-                        {currentPhoto.caption}
-                      </p>
-                    )}
-                    {currentPhoto.date && (
-                      <p className="text-white/80 text-sm mt-1 drop-shadow-sm">
-                        {new Date(currentPhoto.date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </p>
                     )}
                   </motion.div>
-                </AnimatePresence>
-              </div>
-            )}
+                );
+              })}
+
+              {/* Shared Caption overlay */}
+              {(currentPhoto?.caption || currentPhoto?.date) && (
+                <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 z-20 ${isDark
+                  ? 'bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent'
+                  : 'bg-gradient-to-t from-black/70 via-black/40 to-transparent'
+                  }`}>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentIndex}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {currentPhoto.caption && (
+                        <p className="text-white text-lg md:text-xl font-medium drop-shadow-md">
+                          {currentPhoto.caption}
+                        </p>
+                      )}
+                      {currentPhoto.date && (
+                        <p className="text-white/80 text-sm mt-1 drop-shadow-sm">
+                          {new Date(currentPhoto.date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right navigation button */}
