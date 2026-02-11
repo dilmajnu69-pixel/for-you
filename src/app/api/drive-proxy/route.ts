@@ -70,21 +70,21 @@ async function tryFetch(drive: any, fileId: string) {
     fields: 'mimeType, name, thumbnailLink',
   });
 
-  let mimeType = (metadata.data.mimeType || 'application/octet-stream').toLowerCase();
+  const originalMimeType = (metadata.data.mimeType || 'application/octet-stream').toLowerCase();
+  let mimeType = originalMimeType;
   let response;
 
-  console.log(`[Proxy] Processing ${fileId} (${mimeType})`);
+  console.log(`[Proxy] Processing ${fileId} (${originalMimeType})`);
 
-  // 2. Special handling for HEIC/HEIF (not natively supported by browsers)
-  // We fetch a high-res thumbnail version which Google Drive generates as a JPEG
-  if (mimeType.includes('heic') || mimeType.includes('heif')) {
-    console.log(`[Proxy] Converting HEIC/HEIF for ${fileId} to JPEG...`);
-    let thumbUrl = metadata.data.thumbnailLink;
-    if (thumbUrl) {
-      // Remove the size constraint (usually ends in =s220) and replace with high res
-      thumbUrl = thumbUrl.replace(/=s\d+$/, '=s2000');
+  // 2. Specialized handling for formats browsers struggle with (HEIC, HEIF, etc.)
+  const isHeic = originalMimeType.includes('heic') || originalMimeType.includes('heif') || originalMimeType.includes('apple');
 
-      // Fetch the thumbnail using the drive's auth
+  if (isHeic && metadata.data.thumbnailLink) {
+    try {
+      console.log(`[Proxy] Converting ${fileId} to high-res JPEG via thumbnail service`);
+      // Upgrade thumbnail to high resolution (up to 2000px)
+      const thumbUrl = metadata.data.thumbnailLink.replace(/=s\d+$/, '=s2000');
+
       const auth = drive.context?._options?.auth || drive.auth;
       const thumbResponse = await auth.request({
         url: thumbUrl,
@@ -93,20 +93,15 @@ async function tryFetch(drive: any, fileId: string) {
 
       response = { data: thumbResponse.data };
       mimeType = 'image/jpeg';
-      console.log(`[Proxy] HEIC conversion successful for ${fileId}`);
-    } else {
-      console.warn(`[Proxy] No thumbnailLink for HEIC ${fileId}`);
-      response = await drive.files.get(
-        { fileId: fileId, alt: 'media' },
-        { responseType: 'stream' }
-      );
+      console.log(`[Proxy] Conversion successful for ${fileId}`);
+    } catch (err: any) {
+      console.error(`[Proxy] Conversion failed for ${fileId}:`, err.message);
+      // Fallback to raw media
+      response = await drive.files.get({ fileId: fileId, alt: 'media' }, { responseType: 'stream' });
     }
   } else {
     // Standard photo
-    response = await drive.files.get(
-      { fileId: fileId, alt: 'media' },
-      { responseType: 'stream' }
-    );
+    response = await drive.files.get({ fileId: fileId, alt: 'media' }, { responseType: 'stream' });
   }
 
   return { metadata, response, mimeType };
