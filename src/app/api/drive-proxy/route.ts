@@ -81,26 +81,32 @@ async function tryFetch(drive: any, fileId: string) {
 
   if (isHeic && metadata.data.thumbnailLink) {
     try {
-      console.log(`[Proxy] Converting ${fileId} to high-res JPEG via thumbnail service`);
-      // Upgrade thumbnail to high resolution (up to 2000px)
+      console.log(`[Proxy] Converting ${fileId} via high-res thumbnail link...`);
+      // Update thumbnail size to high res
       const thumbUrl = metadata.data.thumbnailLink.replace(/=s\d+$/, '=s2000');
 
+      // Get auth token manually for the fetch request
       const auth = drive.context?._options?.auth || drive.auth;
-      const thumbResponse = await auth.request({
-        url: thumbUrl,
-        responseType: 'stream'
+      const tokenResponse = await auth.getAccessToken();
+      const token = typeof tokenResponse === 'string' ? tokenResponse : tokenResponse.token;
+
+      const thumbRes = await fetch(thumbUrl, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      response = { data: thumbResponse.data };
-      mimeType = 'image/jpeg';
-      console.log(`[Proxy] Conversion successful for ${fileId}`);
+      if (thumbRes.ok && thumbRes.body) {
+        response = { data: thumbRes.body };
+        mimeType = 'image/jpeg';
+        console.log(`[Proxy] HEIC conversion successful for ${fileId}`);
+      } else {
+        throw new Error(`Thumbnail fetch status: ${thumbRes.status}`);
+      }
     } catch (err: any) {
-      console.error(`[Proxy] Conversion failed for ${fileId}:`, err.message);
-      // Fallback to raw media
+      console.error(`[Proxy] Conversion fallback for ${fileId}:`, err.message);
       response = await drive.files.get({ fileId: fileId, alt: 'media' }, { responseType: 'stream' });
     }
   } else {
-    // Standard photo
+    // 3. Standard photo
     response = await drive.files.get({ fileId: fileId, alt: 'media' }, { responseType: 'stream' });
   }
 
