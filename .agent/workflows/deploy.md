@@ -1,44 +1,29 @@
 ---
-description: Deploy the application to Vercel
+description: Deploy the changes to production by pushing to the main branch
 ---
 
-# Deploy to Vercel
+// turbo-all
+# Deploy to Production
 
-This workflow guides you through deploying your Next.js application to Vercel using the command line.
+Follow these steps to deploy all current changes to the production site on Vercel.
 
-## Prerequisites
-
-- You need a Vercel account (Sign up at [vercel.com](https://vercel.com)).
-
-## Steps
-
-1.  **Login to Vercel CLI**
-    If you haven't logged in on this machine before, run this command and follow the prompts (email/github login).
+1.  **Add all changes**
     ```bash
-    npx vercel login
+    git add .
     ```
 
-2.  **Deploy Preview**
-    Run the deploy command.
-    - Set up and deploy: **Y**
-    - Which scope: **(Select your account)**
-    - Link to existing project: **N** (or Y if you already made one)
-    - Project name: **(Press Enter for default)**
-    - In which directory: **./** (Press Enter)
-    - Want to modify settings: **N** (Next.js defaults are good)
-    
+2.  **Commit changes**
+    *Use a descriptive message or the default one provided.*
     ```bash
-    npx vercel
-    ```
-    *This creates a "Preview" URL.*
-
-3.  **Deploy to Production**
-    Once you are happy with the preview, deploy to your live production URL.
-    ```bash
-    npx vercel --prod
+    git commit -m "Deploy: Updated application to production"
     ```
 
-## Alternative: Git Deployment (Recommended for Long Term)
-1. Push your code to GitHub.
-2. Import the repository on the Vercel Dashboard.
-3. Every push to `main` will automatically deploy!
+3.  **Push to main**
+    *This triggers the automatic Vercel deployment pipeline.*
+    ```bash
+    git push origin main
+    ```
+
+4.  **Verify Deployment**
+    Check the [Vercel Dashboard](https://vercel.com/dashboard) or the production URL:
+    [https://for-you-red.vercel.app](https://for-you-red.vercel.app)
