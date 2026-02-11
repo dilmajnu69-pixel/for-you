@@ -14,12 +14,23 @@ const getDriveClient = () => {
   const serviceAccountEmail = process.env.GOOGLE_CLIENT_EMAIL;
   let privateKey = process.env.GOOGLE_PRIVATE_KEY;
 
+  console.log('[Proxy] Environment check:', {
+    hasEmail: !!serviceAccountEmail,
+    hasKey: !!privateKey,
+    hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+    hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+    hasRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN
+  });
+
   if (serviceAccountEmail && privateKey) {
     try {
       // Robustly handle both literal newlines and escaped \n
       if (privateKey.includes('\\n')) {
         privateKey = privateKey.replace(/\\n/g, '\n');
       }
+
+      // Remove any accidental quotes at start/end
+      privateKey = privateKey.trim().replace(/^["']|["']$/g, '');
 
       console.log('[Proxy] Initializing Drive with Service Account:', serviceAccountEmail);
 
@@ -30,8 +41,8 @@ const getDriveClient = () => {
       });
       driveClient = google.drive({ version: 'v3', auth });
       return driveClient;
-    } catch (error) {
-      console.error('[Proxy] Service Account init failed:', error);
+    } catch (error: any) {
+      console.error('[Proxy] Service Account init failed:', error.message);
     }
   } else {
     console.log('[Proxy] Service Account credentials missing, trying OAuth...');
@@ -48,8 +59,8 @@ const getDriveClient = () => {
       auth.setCredentials({ refresh_token: refreshToken });
       driveClient = google.drive({ version: 'v3', auth });
       return driveClient;
-    } catch (error) {
-      console.error('[Proxy] OAuth init failed:', error);
+    } catch (error: any) {
+      console.error('[Proxy] OAuth init failed:', error.message);
     }
   }
 
@@ -112,7 +123,11 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error(`[Proxy] Failed to fetch file ${fileId}:`, error.message);
     return NextResponse.json(
-      { error: 'Failed to fetch image from Google Drive' },
+      {
+        error: 'Failed to fetch image from Google Drive',
+        details: error.message,
+        code: error.code
+      },
       { status: error.code === 404 ? 404 : 500 }
     );
   }
