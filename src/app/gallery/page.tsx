@@ -34,6 +34,7 @@ export default function GalleryPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
+  const [proxyError, setProxyError] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -170,8 +171,21 @@ export default function GalleryPage() {
                         }`}
                       referrerPolicy="no-referrer"
                       onLoad={() => setIsLoading(false)}
-                      onError={() => {
+                      onError={async () => {
                         console.warn(`[Gallery] Image failed to load via proxy: ${currentPhoto.id}. Trying fallback...`);
+
+                        // Try to get the error reason from the proxy if we haven't already
+                        if (!proxyError && !failedImages[currentPhoto.id]) {
+                          try {
+                            const proxyUrl = getImageSrc(currentPhoto.src);
+                            const res = await fetch(proxyUrl);
+                            if (!res.ok) {
+                              const errorData = await res.json();
+                              setProxyError(errorData);
+                            }
+                          } catch (e) { }
+                        }
+
                         if (!failedImages[currentPhoto.id]) {
                           setFailedImages(prev => ({ ...prev, [currentPhoto.id]: true }));
                         } else {
@@ -180,6 +194,14 @@ export default function GalleryPage() {
                         }
                       }}
                     />
+
+                    {/* Overlay Error Message */}
+                    {proxyError && !isLoading && (
+                      <div className="absolute inset-x-0 top-0 z-30 p-2 bg-red-500/90 text-white text-[10px] text-center backdrop-blur-sm">
+                        ⚠️ Drive Connection Issue: <strong>{proxyError.attempts?.[0]?.message || proxyError.details || 'unknown'}</strong>.
+                        Check your Vercel Environment Variables.
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className={`w-full h-full flex items-center justify-center ${isDark
