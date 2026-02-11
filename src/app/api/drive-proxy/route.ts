@@ -64,19 +64,47 @@ const initOAuth = () => {
 };
 
 async function tryFetch(drive: any, fileId: string) {
-  // 1. Get file metadata for Content-Type
+  // 1. Get file metadata
   const metadata = await drive.files.get({
     fileId: fileId,
-    fields: 'mimeType, name',
+    fields: 'mimeType, name, thumbnailLink',
   });
 
-  const mimeType = metadata.data.mimeType || 'application/octet-stream';
+  let mimeType = metadata.data.mimeType || 'application/octet-stream';
+  let response;
 
-  // 2. Fetch file content as a stream
-  const response = await drive.files.get(
-    { fileId: fileId, alt: 'media' },
-    { responseType: 'stream' }
-  );
+  // 2. Special handling for HEIC/HEIF (not natively supported by browsers)
+  // We fetch a high-res thumbnail version which Google Drive generates as a JPEG
+  if (mimeType.includes('heic') || mimeType.includes('heif')) {
+    console.log(`[Proxy] Detected HEIC/HEIF for ${fileId}, converting to high-res JPEG via thumbnail service`);
+    let thumbUrl = metadata.data.thumbnailLink;
+    if (thumbUrl) {
+      // Remove the size constraint (usually ends in =s220) and replace with high res
+      thumbUrl = thumbUrl.replace(/=s\d+$/, '=s2000');
+
+      // Fetch the thumbnail using the drive's auth
+      const auth = drive.context._options.auth;
+      const thumbResponse = await auth.request({
+        url: thumbUrl,
+        responseType: 'stream'
+      });
+
+      response = { data: thumbResponse.data };
+      mimeType = 'image/jpeg';
+    } else {
+      // Fallback to raw if no thumbnail (unlikely for images)
+      response = await drive.files.get(
+        { fileId: fileId, alt: 'media' },
+        { responseType: 'stream' }
+      );
+    }
+  } else {
+    // Standard photo - fetch content as a stream
+    response = await drive.files.get(
+      { fileId: fileId, alt: 'media' },
+      { responseType: 'stream' }
+    );
+  }
 
   return { metadata, response, mimeType };
 }
