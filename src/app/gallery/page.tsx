@@ -35,15 +35,10 @@ export default function GalleryPage() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
   const [proxyError, setProxyError] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({});
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const { photos } = useData();
-
-  // Reset loading state when photo changes
-  useEffect(() => {
-    setIsLoading(true);
-  }, [currentIndex]);
 
   const nextPhoto = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % photos.length);
@@ -133,114 +128,124 @@ export default function GalleryPage() {
           )}
 
           {/* Photo container */}
-          <div className="relative flex-1 aspect-[4/3] md:aspect-video rounded-2xl overflow-hidden shadow-2xl">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentIndex}
-                initial={{ opacity: 0, scale: 1.05 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.5 }}
-                className="absolute inset-0"
-              >
-                {currentPhoto.src ? (
-                  <>
-                    {/* Blurred Background for "Fill" effect */}
-                    <div className="absolute inset-0 z-0">
+          <div className="relative flex-1 aspect-[4/3] md:aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black/5">
+            {photos.map((photo, index) => {
+              const isActive = index === currentIndex;
+              const isLoaded = loadedImages[photo.id];
+              const isFailed = failedImages[photo.id];
+
+              return (
+                <motion.div
+                  key={photo.id}
+                  initial={false}
+                  animate={{
+                    opacity: isActive ? 1 : 0,
+                    scale: isActive ? 1 : 1.05,
+                    zIndex: isActive ? 10 : 0,
+                  }}
+                  transition={{ duration: 0.5, ease: "easeInOut" }}
+                  className="absolute inset-0"
+                  style={{
+                    pointerEvents: isActive ? 'auto' : 'none',
+                    visibility: (isActive || index === (currentIndex + 1) % photos.length || index === (currentIndex - 1 + photos.length) % photos.length) ? 'visible' : 'hidden'
+                  }}
+                >
+                  {photo.src ? (
+                    <>
+                      {/* Blurred Background for "Fill" effect */}
+                      <div className="absolute inset-0 z-0">
+                        <img
+                          src={getImageSrc(photo.src, isFailed)}
+                          alt=""
+                          className="w-full h-full object-cover blur-2xl opacity-40 scale-110"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+
+                      {/* Loading Spinner (only for active image if not yet loaded) */}
+                      {isActive && !isLoaded && !isFailed && (
+                        <div className="absolute inset-0 z-20 flex items-center justify-center">
+                          <div className={`w-10 h-10 border-4 border-t-transparent rounded-full animate-spin ${isDark ? 'border-pink-400' : 'border-rose-500'
+                            }`}></div>
+                        </div>
+                      )}
+
+                      {/* Main Image */}
                       <img
-                        src={getImageSrc(currentPhoto.src, failedImages[currentPhoto.id])}
-                        alt=""
-                        className="w-full h-full object-cover blur-2xl opacity-40 scale-110"
+                        src={getImageSrc(photo.src, isFailed)}
+                        alt={photo.caption}
+                        className={`relative z-10 w-full h-full object-contain drop-shadow-md transition-opacity duration-300 ${isActive && !isLoaded ? 'opacity-0' : 'opacity-100'
+                          }`}
                         referrerPolicy="no-referrer"
-                      />
-                    </div>
-
-                    {/* Loading Spinner */}
-                    {isLoading && (
-                      <div className="absolute inset-0 z-20 flex items-center justify-center">
-                        <div className={`w-10 h-10 border-4 border-t-transparent rounded-full animate-spin ${isDark ? 'border-pink-400' : 'border-rose-500'
-                          }`}></div>
-                      </div>
-                    )}
-
-                    {/* Main Image - Fully Visible */}
-                    <img
-                      src={getImageSrc(currentPhoto.src, failedImages[currentPhoto.id])}
-                      alt={currentPhoto.caption}
-                      className={`relative z-10 w-full h-full object-contain drop-shadow-md transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'
-                        }`}
-                      referrerPolicy="no-referrer"
-                      onLoad={() => setIsLoading(false)}
-                      onError={async () => {
-                        console.warn(`[Gallery] Image failed to load via proxy: ${currentPhoto.id}. Trying fallback...`);
-
-                        // Try to get the error reason from the proxy if we haven't already
-                        if (!proxyError && !failedImages[currentPhoto.id]) {
-                          try {
-                            const proxyUrl = getImageSrc(currentPhoto.src);
-                            const res = await fetch(proxyUrl);
-                            if (!res.ok) {
-                              const errorData = await res.json();
-                              setProxyError(errorData);
+                        onLoad={() => setLoadedImages(prev => ({ ...prev, [photo.id]: true }))}
+                        onError={async () => {
+                          if (!isFailed) {
+                            if (isActive && !proxyError) {
+                              try {
+                                const res = await fetch(getImageSrc(photo.src));
+                                if (!res.ok) {
+                                  const errorData = await res.json();
+                                  setProxyError(errorData);
+                                }
+                              } catch (e) { }
                             }
-                          } catch (e) { }
-                        }
+                            setFailedImages(prev => ({ ...prev, [photo.id]: true }));
+                          }
+                        }}
+                      />
 
-                        if (!failedImages[currentPhoto.id]) {
-                          setFailedImages(prev => ({ ...prev, [currentPhoto.id]: true }));
-                        } else {
-                          // Even fallback failed
-                          setIsLoading(false);
-                        }
-                      }}
-                    />
-
-                    {/* Overlay Error Message */}
-                    {proxyError && !isLoading && (
-                      <div className="absolute inset-x-0 top-0 z-30 p-2 bg-red-500/90 text-white text-[10px] text-center backdrop-blur-sm">
-                        ⚠️ Drive Connection Issue: <strong>{proxyError.attempts?.[0]?.message || proxyError.details || 'unknown'}</strong>.
-                        Check your Vercel Environment Variables.
+                      {/* Overlay Error Message */}
+                      {isActive && proxyError && (
+                        <div className="absolute inset-x-0 top-0 z-30 p-2 bg-red-500/90 text-white text-[10px] text-center backdrop-blur-sm">
+                          ⚠️ Drive Connection Issue: <strong>{proxyError.attempts?.[0]?.message || proxyError.details || 'unknown'}</strong>.
+                          Check your Vercel Environment Variables.
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className={`w-full h-full flex items-center justify-center ${isDark
+                      ? 'bg-gradient-to-br from-slate-800 via-purple-900/50 to-slate-800'
+                      : 'bg-gradient-to-br from-pink-100 via-rose-100 to-pink-50'
+                      }`}>
+                      <div className="text-center p-8">
+                        <div className="text-6xl mb-4">📷</div>
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <div className={`w-full h-full flex items-center justify-center ${isDark
-                    ? 'bg-gradient-to-br from-slate-800 via-purple-900/50 to-slate-800'
-                    : 'bg-gradient-to-br from-pink-100 via-rose-100 to-pink-50'
-                    }`}>
-                    <div className="text-center p-8">
-                      <div className="text-6xl mb-4">📷</div>
                     </div>
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
+                  )}
+                </motion.div>
+              );
+            })}
 
-            {/* Caption overlay */}
-            {(currentPhoto.caption || currentPhoto.date) && (
+            {/* Shared Caption overlay */}
+            {(currentPhoto?.caption || currentPhoto?.date) && (
               <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 z-20 ${isDark
                 ? 'bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent'
                 : 'bg-gradient-to-t from-black/70 via-black/40 to-transparent'
                 }`}>
-                {currentPhoto.caption && (
-                  <motion.p
-                    key={`caption-${currentIndex}`}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentIndex}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-white text-lg md:text-xl font-medium drop-shadow-md"
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.3 }}
                   >
-                    {currentPhoto.caption}
-                  </motion.p>
-                )}
-                {currentPhoto.date && (
-                  <p className="text-white/80 text-sm mt-1 drop-shadow-sm">
-                    {new Date(currentPhoto.date).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
-                )}
+                    {currentPhoto.caption && (
+                      <p className="text-white text-lg md:text-xl font-medium drop-shadow-md">
+                        {currentPhoto.caption}
+                      </p>
+                    )}
+                    {currentPhoto.date && (
+                      <p className="text-white/80 text-sm mt-1 drop-shadow-sm">
+                        {new Date(currentPhoto.date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </div>
             )}
           </div>
