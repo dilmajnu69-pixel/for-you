@@ -12,13 +12,20 @@ const getDriveClient = () => {
   if (driveClient) return driveClient;
 
   const serviceAccountEmail = process.env.GOOGLE_CLIENT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY;
 
   if (serviceAccountEmail && privateKey) {
     try {
+      // Robustly handle both literal newlines and escaped \n
+      if (privateKey.includes('\\n')) {
+        privateKey = privateKey.replace(/\\n/g, '\n');
+      }
+
+      console.log('[Proxy] Initializing Drive with Service Account:', serviceAccountEmail);
+
       const auth = new google.auth.JWT({
         email: serviceAccountEmail,
-        key: privateKey.replace(/\\n/g, '\n'),
+        key: privateKey,
         scopes: SCOPES,
       });
       driveClient = google.drive({ version: 'v3', auth });
@@ -26,6 +33,8 @@ const getDriveClient = () => {
     } catch (error) {
       console.error('[Proxy] Service Account init failed:', error);
     }
+  } else {
+    console.log('[Proxy] Service Account credentials missing, trying OAuth...');
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -34,6 +43,7 @@ const getDriveClient = () => {
 
   if (clientId && clientSecret && refreshToken) {
     try {
+      console.log('[Proxy] Initializing Drive with OAuth...');
       const auth = new google.auth.OAuth2(clientId, clientSecret);
       auth.setCredentials({ refresh_token: refreshToken });
       driveClient = google.drive({ version: 'v3', auth });
@@ -43,6 +53,7 @@ const getDriveClient = () => {
     }
   }
 
+  console.error('[Proxy] No Drive credentials found in environment variables');
   return null;
 };
 
@@ -56,8 +67,11 @@ export async function GET(req: NextRequest) {
 
   const drive = getDriveClient();
   if (!drive) {
+    console.error('[Proxy] Drive client not configured');
     return NextResponse.json({ error: 'Drive client not configured' }, { status: 500 });
   }
+
+  console.log(`[Proxy] Fetching file: ${fileId}`);
 
   try {
     // 1. Get file metadata for Content-Type

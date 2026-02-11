@@ -17,11 +17,15 @@ interface Photo {
 /**
  * Helper to transform Google Drive direct links into proxy links
  */
-const getImageSrc = (src: string) => {
-  if (src.includes('drive.google.com')) {
-    const url = new URL(src);
-    const id = url.searchParams.get('id');
-    return `/api/drive-proxy?id=${id}`;
+const getImageSrc = (src: string, useFallback: boolean = false) => {
+  if (src.includes('drive.google.com') && !useFallback) {
+    try {
+      const url = new URL(src);
+      const id = url.searchParams.get('id');
+      if (id) return `/api/drive-proxy?id=${id}`;
+    } catch (e) {
+      console.error('Invalid URL in getImageSrc:', src);
+    }
   }
   return src;
 };
@@ -29,9 +33,16 @@ const getImageSrc = (src: string) => {
 export default function GalleryPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
+  const [isLoading, setIsLoading] = useState(true);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const { photos } = useData();
+
+  // Reset loading state when photo changes
+  useEffect(() => {
+    setIsLoading(true);
+  }, [currentIndex]);
 
   const nextPhoto = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % photos.length);
@@ -136,18 +147,38 @@ export default function GalleryPage() {
                     {/* Blurred Background for "Fill" effect */}
                     <div className="absolute inset-0 z-0">
                       <img
-                        src={getImageSrc(currentPhoto.src)}
+                        src={getImageSrc(currentPhoto.src, failedImages[currentPhoto.id])}
                         alt=""
                         className="w-full h-full object-cover blur-2xl opacity-40 scale-110"
                         referrerPolicy="no-referrer"
                       />
                     </div>
+
+                    {/* Loading Spinner */}
+                    {isLoading && (
+                      <div className="absolute inset-0 z-20 flex items-center justify-center">
+                        <div className={`w-10 h-10 border-4 border-t-transparent rounded-full animate-spin ${isDark ? 'border-pink-400' : 'border-rose-500'
+                          }`}></div>
+                      </div>
+                    )}
+
                     {/* Main Image - Fully Visible */}
                     <img
-                      src={getImageSrc(currentPhoto.src)}
+                      src={getImageSrc(currentPhoto.src, failedImages[currentPhoto.id])}
                       alt={currentPhoto.caption}
-                      className="relative z-10 w-full h-full object-contain drop-shadow-md"
+                      className={`relative z-10 w-full h-full object-contain drop-shadow-md transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'
+                        }`}
                       referrerPolicy="no-referrer"
+                      onLoad={() => setIsLoading(false)}
+                      onError={() => {
+                        console.warn(`[Gallery] Image failed to load via proxy: ${currentPhoto.id}. Trying fallback...`);
+                        if (!failedImages[currentPhoto.id]) {
+                          setFailedImages(prev => ({ ...prev, [currentPhoto.id]: true }));
+                        } else {
+                          // Even fallback failed
+                          setIsLoading(false);
+                        }
+                      }}
                     />
                   </>
                 ) : (

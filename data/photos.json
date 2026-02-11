@@ -1,18 +1,6 @@
 {
   "photos": [
     {
-      "id": 1770376864469,
-      "src": "https://drive.google.com/uc?export=view&id=1j3_Dr8O3iFMPiBH5keNRwnAW1UzIiN10",
-      "caption": "",
-      "date": "2026-01-21T11:48:27.566Z"
-    },
-    {
-      "id": 1770376295245,
-      "src": "https://drive.google.com/uc?export=view&id=1zT5M2dpBIDDEcah0Szn3npLfLj5DChCl",
-      "caption": "",
-      "date": "2026-02-06T10:39:18.233Z"
-    },
-    {
       "id": 1770374375190,
       "src": "https://drive.google.com/uc?export=view&id=1-HsioOldbq7xE5nl2kFFqelsh8_bbVOC",
       "caption": "",
@@ -113,12 +101,6 @@
       "src": "https://drive.google.com/uc?export=view&id=1ANRXQezUfTmmdTAmKnvfw4SY43ClWBw3",
       "caption": "",
       "date": "2026-01-21T11:29:33.739Z"
-    },
-    {
-      "id": 1770013381173,
-      "src": "https://drive.google.com/uc?export=view&id=1yiqek45GO2AUFhZlAkW9jRAi44-RGUMG",
-      "caption": "",
-      "date": "2026-01-21T11:13:12.777Z"
     }
   ]
 }
