@@ -104,15 +104,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         if (msgRes.ok) {
           const data = await msgRes.json();
-          if (Array.isArray(data) && data.length > 0) setMessages(data);
+          // Use the data if it exists, even if empty. Only fallback if data is null/undefined.
+          if (Array.isArray(data)) setMessages(data);
           else setMessages(initialMessages.messages);
         } else {
+          // Fetch failed (status 404/500), use bundled defaults
           setMessages(initialMessages.messages);
         }
 
         if (dateRes.ok) {
           const data = await dateRes.json();
-          if (Array.isArray(data) && data.length > 0) setSpecialDates(data);
+          if (Array.isArray(data)) setSpecialDates(data);
           else setSpecialDates(initialSpecialDates.specialDates);
         } else {
           setSpecialDates(initialSpecialDates.specialDates);
@@ -120,7 +122,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         if (musicRes.ok) {
           const data = await musicRes.json();
-          if (Array.isArray(data) && data.length > 0) setSongs(data);
+          if (Array.isArray(data)) setSongs(data);
           else setSongs(initialMusic.songs);
         } else {
           setSongs(initialMusic.songs);

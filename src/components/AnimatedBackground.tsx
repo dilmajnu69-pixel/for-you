@@ -170,23 +170,6 @@ export default function AnimatedBackground({ enableInteractivity = false }: { en
         )}
       </AnimatePresence>
 
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {showToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-40 px-6 py-3 rounded-full shadow-xl text-sm font-medium backdrop-blur-md transition-colors duration-300
-              ${isDark
-                ? 'bg-slate-800/90 text-pink-200 border border-purple-500/30'
-                : 'bg-white/90 text-rose-600 border border-pink-200 shadow-pink-200/50'
-              }`}
-          >
-            {clickCount < 10 ? `Click ${11 - clickCount} times more...` : "Almost there..."}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div className="fixed inset-0 -z-10 overflow-hidden transition-colors duration-300">
         {/* Base gradient layer

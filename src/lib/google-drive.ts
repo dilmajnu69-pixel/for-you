@@ -277,7 +277,10 @@ export async function savePersistentJSON(filename: string, data: any) {
   }
 
   // 2. Sync to Google Drive
-  if (!drive || !folderId) return;
+  if (!drive || !folderId) {
+    console.warn(`[Google Drive] Sync skipped for ${filename}: No credentials or folder ID`);
+    return;
+  }
 
   try {
     const file = await findFile(filename);
@@ -304,7 +307,9 @@ export async function savePersistentJSON(filename: string, data: any) {
     });
     console.log(`[Google Drive] ${filename} synced to Drive successfully`);
   } catch (e) {
-    console.error(`[Google Drive] Failed to sync ${filename} to Drive:`, e);
+    console.error(`[Google Drive] CRITICAL: Failed to sync ${filename} to Drive:`, e);
+    // Rethrow so the API can report failure to the user
+    throw new Error(`Cloud sync failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
   }
 }
 
