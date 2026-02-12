@@ -24,10 +24,13 @@ import path from 'path';
 /** Full Drive access scope - required for creating, reading, updating, and deleting files */
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
 
-/** Local data directory paths */
-const DATA_DIR = path.join(process.cwd(), 'data');
+/** Local data directory paths - Use robust temporary path in production/Vercel */
+const DATA_DIR = process.env.NODE_ENV === 'production'
+  ? path.join('/tmp', 'data')
+  : path.join(process.cwd(), 'data');
+
 const LOCAL_DB_PATH = path.join(DATA_DIR, 'photos.json');
-const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
+const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads'); // Still public for static serving locally
 
 /** Retry configuration for transient errors */
 const MAX_RETRIES = 3;
@@ -45,30 +48,25 @@ let driveClient: any = null;
 /** Flag to track if initialization has been attempted */
 let driveClientInitialized = false;
 
-/**
- * Initialize and return Google Drive client with automatic authentication fallback
- * 
- * Authentication priority:
- * 1. Service Account (GOOGLE_CLIENT_EMAIL + GOOGLE_PRIVATE_KEY)
- * 2. OAuth 2.0 (GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + GOOGLE_REFRESH_TOKEN
-)
- * 3. null (triggers local storage fallback)
- * 
- * @returns Google Drive client instance or null if no credentials are configured
- */
 const getDriveClient = () => {
   // Return cached client if already initialized
   if (driveClientInitialized) return driveClient;
 
   // === Try Service Account (preferred) ===
   const serviceAccountEmail = process.env.GOOGLE_CLIENT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY;
 
   if (serviceAccountEmail && privateKey) {
     try {
+      // Robust key formatting: Remove surrounding quotes and handle newlines
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.slice(1, -1);
+      }
+      const formattedKey = privateKey.replace(/\\n/g, '\n');
+
       const auth = new google.auth.JWT({
         email: serviceAccountEmail,
-        key: privateKey.replace(/\\n/g, '\n'), // Unescape newlines in private key
+        key: formattedKey,
         scopes: SCOPES,
       });
       driveClient = google.drive({ version: 'v3', auth });
@@ -99,8 +97,8 @@ const getDriveClient = () => {
     }
   }
 
-  // === No credentials - use local storage ===
-  console.log('[Google Drive] No credentials configured, using local storage fallback');
+  // === No credentials - log explicitly ===
+  console.warn('[Google Drive] No valid credentials found. Data will NOT persist across deployments.');
   driveClientInitialized = true;
   return null;
 };
