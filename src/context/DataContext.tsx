@@ -160,9 +160,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addMessage = (text: string, type: string = 'note') => {
     const newId = Math.max(0, ...messages.map(m => m.id)) + 1;
-    const newMessages = [...messages, { id: newId, text, type }];
+    const newMessage = { id: newId, text, type };
+    const newMessages = [...messages, newMessage];
 
-    setMessages(newMessages);
+    setMessages(prev => [...prev, newMessage]);
 
     const promise = fetch('/api/save-data', {
       method: 'POST',
