@@ -103,6 +103,15 @@ The easiest way to deploy this Next.js app is using **Vercel** (the creators of 
 2. Start the server: `npm start`
 3. Use a process manager like `pm2` and a reverse proxy like Nginx.
 
-## �📄 License
 
-This project is personal and created with ❤️.
+## 📄 License & Legal Warning
+
+**© 2024-2025 Compliments App. All Rights Reserved.**
+
+This project assumes a **STRICT PROPRIETARY LICENSE**.
+
+- **Unauthorized Copying**: Copying, modifying, distributing, or using this codebase, in whole or in part, for any commercial or non-commercial purpose without explicit written permission from the owner is **STRICTLY PROHIBITED**.
+- **Plagiarism**: Any attempt to replicate, clone, or present this work as your own will be met with legal action to the fullest extent of applicable intellectual property laws.
+- **Accountability**: By accessing this repository, you acknowledge that you have read this warning. Violators will be held accountable for plagiarism and copyright infringement.
+
+This software is provided for personal viewing only by the intended recipient.
