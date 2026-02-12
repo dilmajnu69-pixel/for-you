@@ -106,7 +106,7 @@ The easiest way to deploy this Next.js app is using **Vercel** (the creators of 
 
 ## 📄 License & Legal Warning
 
-**© 2024-2025 Compliments App. All Rights Reserved.**
+**© 2024-2099 Compliments App. All Rights Reserved.**
 
 This project assumes a **STRICT PROPRIETARY LICENSE**.
 
