@@ -49,10 +49,21 @@ export async function POST(request: Request) {
     };
 
     // Save with Google Drive sync
-    await savePersistentJSON(config.filename, content);
+    const result = await savePersistentJSON(config.filename, content);
+
+    // If local save failed, it's a 500
+    if (!result || (result.success === false)) {
+      throw new Error(result?.error || 'Failed to save locally');
+    }
 
     console.log(`[Save Data] ${type} persisted successfully (${Array.isArray(data) ? data.length : 'object'} items)`);
-    return NextResponse.json({ success: true, message: `Saved ${type}` });
+
+    // Return success, but include warning if sync failed
+    return NextResponse.json({
+      success: true,
+      message: `Saved ${type}`,
+      warning: result.warning
+    });
 
   } catch (error) {
     console.error('[Save Data] Failed to save:', error);

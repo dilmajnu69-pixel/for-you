@@ -264,20 +264,24 @@ export async function savePersistentJSON(filename: string, data: any) {
   const drive = getDriveClient();
   const folderId = getFolderId();
   const filePath = path.join(DATA_DIR, filename);
+  let localSaveSuccess = false;
 
   // 1. Always save locally first (immediate backup)
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
     await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
     console.log(`[Local DB] ${filename} saved successfully`);
+    localSaveSuccess = true;
   } catch (error) {
     console.error(`[Local DB] Failed to save ${filename}:`, error);
+    // If local save fails, we have a bigger problem (disk full/permissions), but we might still try Drive
+    return { success: false, synced: false, error: `Failed to save locally: ${error instanceof Error ? error.message : String(error)}` };
   }
 
   // 2. Sync to Google Drive
   if (!drive || !folderId) {
     console.warn(`[Google Drive] Sync skipped for ${filename}: No credentials or folder ID`);
-    return;
+    return { success: localSaveSuccess, synced: false, warning: 'Google Drive not configured' };
   }
 
   try {
@@ -303,7 +307,10 @@ export async function savePersistentJSON(filename: string, data: any) {
         });
       }
     });
+
     console.log(`[Google Drive] ${filename} synced to Drive successfully`);
+    return { success: true, synced: true };
+
   } catch (e: any) {
     console.error(`[Google Drive] CRITICAL: Failed to sync ${filename} to Drive:`, e);
 
@@ -311,13 +318,13 @@ export async function savePersistentJSON(filename: string, data: any) {
 
     // enhance error message for common issues
     if (e.code === 403 || e.code === 404 || (e.errors && e.errors[0]?.reason === 'notFound')) {
-      errorMessage = `Access Denied or Folder Not Found. Please ensure the Google Drive API is enabled and that you have SHARED the folder '${folderId}' with the Service Account email: ${process.env.GOOGLE_CLIENT_EMAIL}`;
+      errorMessage = `Access Denied or Folder Not Found. Ensure folder '${folderId}' is SHARED with ${process.env.GOOGLE_CLIENT_EMAIL}`;
     } else if (e.code === 401) {
-      errorMessage = 'Authentication Failed. Please check your GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY environment variables.';
+      errorMessage = 'Authentication Failed. Check GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY.';
     }
 
-    // Rethrow so the API can report failure to the user
-    throw new Error(`Cloud sync failed: ${errorMessage}`);
+    // Graceful degradation: Return success (saved locally) but with warning
+    return { success: localSaveSuccess, synced: false, warning: errorMessage };
   }
 }
 
