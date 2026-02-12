@@ -38,6 +38,12 @@ interface DataContextType {
   specialDates: SpecialDate[];
   photos: Photo[];
   songs: Song[];
+  petNames: string[];
+  loveLetter: {
+    title: string;
+    paragraphs: string[];
+    signature: string;
+  };
   loadingConfig: {
     photos: boolean;
   };
@@ -58,6 +64,8 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 import initialMessages from '@/../data/messages.json';
 import initialSpecialDates from '@/../data/special-dates.json';
 import initialMusic from '@/../data/music.json';
+import initialPetNames from '@/../data/pet-names.json';
+import initialLoveLetter from '@/../data/love-letter.json';
 
 // Provider Component: Manages global state and data persistence
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -66,6 +74,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [specialDates, setSpecialDates] = useState<SpecialDate[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
+  const [petNames, setPetNames] = useState<string[]>(initialPetNames.petNames);
+  const [loveLetter, setLoveLetter] = useState(initialLoveLetter);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState({ photos: true });
 
@@ -82,15 +92,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // 2. Load JSON Data from API (Persistent Files)
     const loadJsonData = async () => {
       try {
-        const [msgRes, dateRes, musicRes] = await Promise.all([
+        const [msgRes, dateRes, musicRes, namesRes, letterRes] = await Promise.all([
           fetch('/api/save-data?type=messages'),
           fetch('/api/save-data?type=special-dates'),
-          fetch('/api/save-data?type=music')
+          fetch('/api/save-data?type=music'),
+          fetch('/api/save-data?type=pet-names'),
+          fetch('/api/save-data?type=love-letter')
         ]);
 
         if (msgRes.ok) {
           const data = await msgRes.json();
-          if (Array.isArray(data)) setMessages(data);
+          if (Array.isArray(data) && data.length > 0) setMessages(data);
           else setMessages(initialMessages.messages);
         } else {
           setMessages(initialMessages.messages);
@@ -98,7 +110,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         if (dateRes.ok) {
           const data = await dateRes.json();
-          if (Array.isArray(data)) setSpecialDates(data);
+          if (Array.isArray(data) && data.length > 0) setSpecialDates(data);
           else setSpecialDates(initialSpecialDates.specialDates);
         } else {
           setSpecialDates(initialSpecialDates.specialDates);
@@ -106,10 +118,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         if (musicRes.ok) {
           const data = await musicRes.json();
-          if (Array.isArray(data)) setSongs(data);
+          if (Array.isArray(data) && data.length > 0) setSongs(data);
           else setSongs(initialMusic.songs);
         } else {
           setSongs(initialMusic.songs);
+        }
+
+        if (namesRes.ok) {
+          const data = await namesRes.json();
+          if (Array.isArray(data) && data.length > 0) setPetNames(data);
+        }
+
+        if (letterRes.ok) {
+          const data = await letterRes.json();
+          if (data && data.title) setLoveLetter(data);
         }
 
       } catch (error) {
@@ -280,6 +302,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       specialDates,
       photos,
       songs,
+      petNames,
+      loveLetter,
       loadingConfig,
       addMessage,
       removeMessage,

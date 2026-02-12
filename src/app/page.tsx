@@ -5,8 +5,8 @@ import { motion } from 'framer-motion';
 
 import PastelEmoji from '@/components/PastelEmoji';
 import { useTheme } from '@/context/ThemeContext';
+import { useData } from '@/context/DataContext';
 import Link from 'next/link';
-import petNamesData from '@/../data/pet-names.json';
 import { APP_CONFIG } from '@/config/constants';
 
 interface FeatureCardProps {
@@ -67,15 +67,16 @@ export default function Home() {
   // State for dynamic personalized greeting
   const [petName, setPetName] = useState('Beautiful');
   const { theme, toggleVisualizer, isVisualizerActive } = useTheme();
+  const { petNames } = useData();
   const isDark = theme === 'dark';
 
-  // Effect: Select a random cute name on mount
+  // Effect: Select a random cute name on mount or when petNames update
   useEffect(() => {
-    const names = petNamesData.petNames;
-    const randomIndex = Math.floor(Math.random() * names.length);
-    // eslint-disable-next-line
-    setPetName(names[randomIndex]);
-  }, []);
+    if (petNames.length > 0) {
+      const randomIndex = Math.floor(Math.random() * petNames.length);
+      setPetName(petNames[randomIndex]);
+    }
+  }, [petNames]);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden pointer-events-none">

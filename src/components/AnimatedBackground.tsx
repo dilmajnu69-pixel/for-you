@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useTheme } from '@/context/ThemeContext';
-import loveLetterData from '@/../data/love-letter.json';
+import { useData } from '@/context/DataContext';
 
 interface AnimatedBackgroundProps {
   enableInteractivity?: boolean;
@@ -18,6 +18,7 @@ interface AnimatedBackgroundProps {
  */
 export default function AnimatedBackground({ enableInteractivity = false }: { enableInteractivity?: boolean }) {
   const { theme } = useTheme();
+  const { loveLetter } = useData();
   const isDark = theme === 'dark';
 
   const [clickCount, setClickCount] = useState(0);
@@ -114,11 +115,11 @@ export default function AnimatedBackground({ enableInteractivity = false }: { en
               {/* Content area */}
               <div className={`flex-1 overflow-y-auto px-6 md:px-12 pb-12 transition-colors duration-500 ${isDark ? 'text-pink-100' : 'text-rose-900'} scrollbar-hide`}>
                 <h2 className={`text-3xl md:text-4xl font-serif font-bold text-center mb-8 tracking-wide transition-colors duration-500 ${isDark ? 'text-pink-300' : 'text-rose-800'}`}>
-                  {loveLetterData.title}
+                  {loveLetter.title}
                 </h2>
 
                 <div className="space-y-6 font-serif text-lg md:text-xl leading-relaxed italic text-justify">
-                  {loveLetterData.paragraphs.map((paragraph, index) => (
+                  {loveLetter.paragraphs.map((paragraph: string, index: number) => (
                     <motion.p
                       key={index}
                       initial={{ opacity: 0, x: -10 }}
@@ -138,7 +139,7 @@ export default function AnimatedBackground({ enableInteractivity = false }: { en
                 >
                   <div className={`w-24 h-px mx-auto mb-6 transition-colors duration-500 ${isDark ? 'bg-purple-500/50' : 'bg-pink-300/50'}`} />
                   <p className="text-2xl font-serif italic">
-                    {loveLetterData.signature}
+                    {loveLetter.signature}
                   </p>
 
                   {/* Decorative "Wax Seal" */}
