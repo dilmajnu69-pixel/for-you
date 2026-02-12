@@ -185,7 +185,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const removeMessage = (id: number) => {
     const newMessages = messages.filter(m => m.id !== id);
-    setMessages(newMessages);
+    setMessages(prev => prev.filter(m => m.id !== id));
 
     const promise = fetch('/api/save-data', {
       method: 'POST',
@@ -207,8 +207,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addSpecialDate = (title: string, date: string, emoji: string, recurring: boolean) => {
     const newId = Math.max(0, ...specialDates.map(s => s.id)) + 1;
-    const newDates = [...specialDates, { id: newId, title, date, emoji, recurring }];
-    setSpecialDates(newDates);
+    const newDate = { id: newId, title, date, emoji, recurring };
+    const newDates = [...specialDates, newDate];
+    setSpecialDates(prev => [...prev, newDate]);
 
     const promise = fetch('/api/save-data', {
       method: 'POST',
@@ -230,7 +231,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const removeSpecialDate = (id: number) => {
     const newDates = specialDates.filter(s => s.id !== id);
-    setSpecialDates(newDates);
+    setSpecialDates(prev => prev.filter(s => s.id !== id));
 
     const promise = fetch('/api/save-data', {
       method: 'POST',
@@ -334,7 +335,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const removePhoto = async (id: number) => {
     const previousPhotos = [...photos];
-    setPhotos(photos.filter(p => p.id !== id));
+    setPhotos(prev => prev.filter(p => p.id !== id));
 
     const promise = fetch(`/api/photos/${id}`, { method: 'DELETE' }).then(res => {
       if (!res.ok) throw new Error('Delete failed');
@@ -355,8 +356,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addSong = (title: string, artist: string, spotifyId: string) => {
     const newId = Math.max(0, ...songs.map(s => s.id)) + 1;
-    const newSongs = [...songs, { id: newId, title, artist, spotifyId }];
-    setSongs(newSongs);
+    const newSong = { id: newId, title, artist, spotifyId };
+    const newSongs = [...songs, newSong];
+    setSongs(prev => [...prev, newSong]);
 
     const promise = fetch('/api/save-data', {
       method: 'POST',
@@ -378,7 +380,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const removeSong = (id: number) => {
     const newSongs = songs.filter(s => s.id !== id);
-    setSongs(newSongs);
+    setSongs(prev => prev.filter(s => s.id !== id));
 
     const promise = fetch('/api/save-data', {
       method: 'POST',
