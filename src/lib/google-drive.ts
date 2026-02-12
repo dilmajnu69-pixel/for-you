@@ -304,10 +304,20 @@ export async function savePersistentJSON(filename: string, data: any) {
       }
     });
     console.log(`[Google Drive] ${filename} synced to Drive successfully`);
-  } catch (e) {
+  } catch (e: any) {
     console.error(`[Google Drive] CRITICAL: Failed to sync ${filename} to Drive:`, e);
+
+    let errorMessage = e.message || 'Unknown error';
+
+    // enhance error message for common issues
+    if (e.code === 403 || e.code === 404 || (e.errors && e.errors[0]?.reason === 'notFound')) {
+      errorMessage = `Access Denied or Folder Not Found. Please ensure the Google Drive API is enabled and that you have SHARED the folder '${folderId}' with the Service Account email: ${process.env.GOOGLE_CLIENT_EMAIL}`;
+    } else if (e.code === 401) {
+      errorMessage = 'Authentication Failed. Please check your GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY environment variables.';
+    }
+
     // Rethrow so the API can report failure to the user
-    throw new Error(`Cloud sync failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    throw new Error(`Cloud sync failed: ${errorMessage}`);
   }
 }
 
