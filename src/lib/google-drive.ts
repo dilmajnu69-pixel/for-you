@@ -16,6 +16,7 @@ import { google } from 'googleapis';
 import { Readable } from 'stream';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 
 // ===========================
 // CONFIGURATION CONSTANTS
@@ -24,10 +25,8 @@ import path from 'path';
 /** Full Drive access scope - required for creating, reading, updating, and deleting files */
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
 
-/** Local data directory paths - Use robust temporary path in production/Vercel */
-const DATA_DIR = process.env.NODE_ENV === 'production'
-  ? path.join('/tmp', 'data')
-  : path.join(process.cwd(), 'data');
+/** Local data directory paths - Use robust system temp directory */
+const DATA_DIR = path.join(os.tmpdir(), 'compliments-data');
 
 const LOCAL_DB_PATH = path.join(DATA_DIR, 'photos.json');
 const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads'); // Still public for static serving locally

@@ -65,10 +65,14 @@ export async function POST(request: Request) {
       warning: result.warning
     });
 
-  } catch (error) {
-    console.error('[Save Data] Failed to save:', error);
+  } catch (error: any) {
+    console.error('[Save Data] CRITICAL FAILURE:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to save data' },
+      {
+        error: 'Critical failure saving data',
+        details: error instanceof Error ? error.message : String(error),
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
