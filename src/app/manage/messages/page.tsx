@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useTheme } from '@/context/ThemeContext';
 import { useData } from '@/context/DataContext';
 import Link from 'next/link';
+import RomanticButton from '@/components/RomanticButton';
 
 // Available message categories for classification
 const MESSAGE_TYPES = [
@@ -26,21 +27,34 @@ export default function ManageMessagesPage() {
   const { messages, addMessage, removeMessage } = useData();
   const [newText, setNewText] = useState('');
   const [newType, setNewType] = useState('compliment');
+  const [isAdding, setIsAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Handle addition of new message
-  // Trims whitespace and resets form on success
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (newText.trim()) {
-      addMessage(newText.trim(), newType);
-      setNewText('');
-      setNewType('compliment');
+      setIsAdding(true);
+      try {
+        await addMessage(newText.trim(), newType);
+        setNewText('');
+        setNewType('compliment');
+      } finally {
+        setIsAdding(false);
+      }
+    }
+  };
+
+  const handleRemove = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await removeMessage(id);
+    } finally {
+      setDeletingId(null);
     }
   };
 
   return (
     <main className="min-h-screen relative overflow-hidden">
-
-
       <div className="relative z-10 px-4 py-8 max-w-2xl mx-auto min-h-screen">
         {/* Back button */}
         <Link
@@ -78,7 +92,6 @@ export default function ManageMessagesPage() {
             Add New Message
           </h2>
 
-          {/* Message type selector */}
           <div className="mb-4">
             <label className={`block text-sm mb-2 ${isDark ? 'text-purple-300' : 'text-pink-500'}`}>
               Message Type
@@ -88,6 +101,7 @@ export default function ManageMessagesPage() {
                 <button
                   key={type.value}
                   onClick={() => setNewType(type.value)}
+                  disabled={isAdding}
                   className={`text-xs px-3 py-1.5 rounded-full transition-all ${newType === type.value
                     ? isDark
                       ? 'bg-pink-500 text-white'
@@ -95,7 +109,7 @@ export default function ManageMessagesPage() {
                     : isDark
                       ? 'bg-slate-700 text-purple-300 hover:bg-slate-600'
                       : 'bg-pink-100 text-pink-500 hover:bg-pink-200'
-                    }`}
+                    } ${isAdding ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {type.label}
                 </button>
@@ -106,29 +120,27 @@ export default function ManageMessagesPage() {
           <textarea
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
+            disabled={isAdding}
             placeholder="Write your special message..."
             className={`w-full p-4 rounded-xl border resize-none h-24 transition-colors ${isDark
               ? 'bg-slate-900/50 border-purple-500/30 text-pink-100 placeholder-purple-400/50'
               : 'bg-pink-50 border-pink-200 text-rose-800 placeholder-pink-300'
-              }`}
+              } ${isAdding ? 'opacity-70' : ''}`}
           />
-          <button
-            onClick={handleAdd}
-            disabled={!newText.trim()}
-            className={`mt-4 px-6 py-2 rounded-xl font-medium transition-all ${newText.trim()
-              ? isDark
-                ? 'bg-pink-500 hover:bg-pink-400 text-white'
-                : 'bg-rose-500 hover:bg-rose-400 text-white'
-              : isDark
-                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                : 'bg-pink-100 text-pink-300 cursor-not-allowed'
-              }`}
-          >
-            + Add Message
-          </button>
+
+          <div className="mt-4">
+            <RomanticButton
+              onClick={handleAdd}
+              isLoading={isAdding}
+              disabled={!newText.trim()}
+              variant="primary"
+            >
+              Add Message 💖
+            </RomanticButton>
+          </div>
         </motion.div>
 
-        {/* List of existing messages with delete option */}
+        {/* List of existing messages */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -161,14 +173,15 @@ export default function ManageMessagesPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => removeMessage(message.id)}
+                  onClick={() => handleRemove(message.id)}
+                  disabled={deletingId === message.id}
                   title="Remove message"
                   className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDark
                     ? 'bg-red-900/50 hover:bg-red-800/70 text-red-300'
                     : 'bg-red-100 hover:bg-red-200 text-red-500'
-                    }`}
+                    } ${deletingId === message.id ? 'opacity-50 animate-pulse' : ''}`}
                 >
-                  ✕
+                  {deletingId === message.id ? '...' : '✕'}
                 </button>
               </motion.div>
             ))}

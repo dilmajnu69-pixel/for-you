@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-
 import { useTheme } from '@/context/ThemeContext';
 import { useData } from '@/context/DataContext';
 import Link from 'next/link';
+import RomanticButton from '@/components/RomanticButton';
 
 const EMOJI_OPTIONS = ['❤️', '🌹', '💕', '🎂', '🗓️', '💑', '🎉', '✨', '🌸', '💐'];
 
@@ -18,21 +18,35 @@ export default function ManageSpecialDatesPage() {
   const [date, setDate] = useState('');
   const [emoji, setEmoji] = useState('❤️');
   const [recurring, setRecurring] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (title.trim() && date) {
-      addSpecialDate(title.trim(), date, emoji, recurring);
-      setTitle('');
-      setDate('');
-      setEmoji('❤️');
-      setRecurring(true);
+      setIsAdding(true);
+      try {
+        await addSpecialDate(title.trim(), date, emoji, recurring);
+        setTitle('');
+        setDate('');
+        setEmoji('❤️');
+        setRecurring(true);
+      } finally {
+        setIsAdding(false);
+      }
+    }
+  };
+
+  const handleRemove = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await removeSpecialDate(id);
+    } finally {
+      setDeletingId(null);
     }
   };
 
   return (
     <main className="min-h-screen relative overflow-hidden">
-
-
       <div className="relative z-10 px-4 py-8 max-w-2xl mx-auto min-h-screen">
         {/* Back button */}
         <Link
@@ -79,11 +93,12 @@ export default function ManageSpecialDatesPage() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                disabled={isAdding}
                 placeholder="e.g., Our Anniversary"
                 className={`w-full p-3 rounded-xl border transition-colors ${isDark
                   ? 'bg-slate-900/50 border-purple-500/30 text-pink-100 placeholder-purple-400/50'
                   : 'bg-pink-50 border-pink-200 text-rose-800 placeholder-pink-300'
-                  }`}
+                  } ${isAdding ? 'opacity-70 cursor-not-allowed' : ''}`}
               />
             </div>
 
@@ -95,10 +110,11 @@ export default function ManageSpecialDatesPage() {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                disabled={isAdding}
                 className={`w-full p-3 rounded-xl border transition-colors ${isDark
                   ? 'bg-slate-900/50 border-purple-500/30 text-pink-100'
                   : 'bg-pink-50 border-pink-200 text-rose-800'
-                  }`}
+                  } ${isAdding ? 'opacity-70 cursor-not-allowed' : ''}`}
               />
             </div>
 
@@ -111,6 +127,7 @@ export default function ManageSpecialDatesPage() {
                   <button
                     key={e}
                     onClick={() => setEmoji(e)}
+                    disabled={isAdding}
                     className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all ${emoji === e
                       ? isDark
                         ? 'bg-pink-500 ring-2 ring-pink-300'
@@ -118,7 +135,7 @@ export default function ManageSpecialDatesPage() {
                       : isDark
                         ? 'bg-slate-700 hover:bg-slate-600'
                         : 'bg-pink-100 hover:bg-pink-200'
-                      }`}
+                      } ${isAdding ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {e}
                   </button>
@@ -129,10 +146,11 @@ export default function ManageSpecialDatesPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setRecurring(!recurring)}
+                disabled={isAdding}
                 className={`w-6 h-6 rounded border flex items-center justify-center ${recurring
                   ? isDark ? 'bg-pink-500 border-pink-400' : 'bg-rose-500 border-rose-400'
                   : isDark ? 'bg-slate-700 border-purple-500/30' : 'bg-pink-50 border-pink-200'
-                  }`}
+                  } ${isAdding ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {recurring && <span className="text-white text-sm">✓</span>}
               </button>
@@ -142,20 +160,16 @@ export default function ManageSpecialDatesPage() {
             </div>
           </div>
 
-          <button
-            onClick={handleAdd}
-            disabled={!title.trim() || !date}
-            className={`mt-6 px-6 py-2 rounded-xl font-medium transition-all ${title.trim() && date
-              ? isDark
-                ? 'bg-pink-500 hover:bg-pink-400 text-white'
-                : 'bg-rose-500 hover:bg-rose-400 text-white'
-              : isDark
-                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                : 'bg-pink-100 text-pink-300 cursor-not-allowed'
-              }`}
-          >
-            + Add Special Date
-          </button>
+          <div className="mt-6">
+            <RomanticButton
+              onClick={handleAdd}
+              isLoading={isAdding}
+              disabled={!title.trim() || !date}
+              variant="primary"
+            >
+              Add Date 🎉
+            </RomanticButton>
+          </div>
         </motion.div>
 
         {/* List of special dates */}
@@ -192,13 +206,14 @@ export default function ManageSpecialDatesPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => removeSpecialDate(sd.id)}
+                  onClick={() => handleRemove(sd.id)}
+                  disabled={deletingId === sd.id}
                   className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDark
                     ? 'bg-red-900/50 hover:bg-red-800/70 text-red-300'
                     : 'bg-red-100 hover:bg-red-200 text-red-500'
-                    }`}
+                    } ${deletingId === sd.id ? 'opacity-50 animate-pulse' : ''}`}
                 >
-                  ✕
+                  {deletingId === sd.id ? '...' : '✕'}
                 </button>
               </motion.div>
             ))}

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useTheme } from '@/context/ThemeContext';
 import { useData } from '@/context/DataContext';
+import { toast } from 'react-hot-toast';
 
 interface AnimatedBackgroundProps {
   enableInteractivity?: boolean;
@@ -22,7 +23,6 @@ export default function AnimatedBackground({ enableInteractivity = false }: { en
   const isDark = theme === 'dark';
 
   const [clickCount, setClickCount] = useState(0);
-  const [showToast, setShowToast] = useState(false);
   const [showScroll, setShowScroll] = useState(false);
 
   const handlePandaClick = () => {
@@ -34,12 +34,17 @@ export default function AnimatedBackground({ enableInteractivity = false }: { en
     if (newCount === 11) {
       setShowScroll(true);
       setClickCount(0); // Reset after success
-      setShowToast(false);
+      toast.success('You found it! ❤️', { icon: '📜', duration: 3000 });
     } else {
-      // Show toast on clicks 1-10
-      setShowToast(true);
-      // Hide toast after 0.5s
-      setTimeout(() => setShowToast(false), 500);
+      // Use toast for feedback
+      const remaining = 11 - newCount;
+      if (newCount > 3) {
+        toast(`Keep clicking... ${remaining} more!`, {
+          icon: '🐼',
+          id: 'panda-click', // Prevent multiple toasts stacking
+          duration: 1000
+        });
+      }
     }
   };
 

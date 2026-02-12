@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-
 import { useTheme } from '@/context/ThemeContext';
 import { useData } from '@/context/DataContext';
 import Link from 'next/link';
+import RomanticButton from '@/components/RomanticButton';
 
 export default function ManageMusicPage() {
   const { theme } = useTheme();
@@ -16,13 +16,15 @@ export default function ManageMusicPage() {
   const [songTitle, setSongTitle] = useState('');
   const [artistName, setArtistName] = useState('');
   const [error, setError] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const extractTrackId = (url: string) => {
     const match = url.match(/track\/([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     setError('');
     const trackId = extractTrackId(spotifyLink);
 
@@ -36,16 +38,28 @@ export default function ManageMusicPage() {
       return;
     }
 
-    addSong(songTitle, artistName || 'Unknown Artist', trackId);
-    setSpotifyLink('');
-    setSongTitle('');
-    setArtistName('');
+    setIsAdding(true);
+    try {
+      await addSong(songTitle, artistName || 'Unknown Artist', trackId);
+      setSpotifyLink('');
+      setSongTitle('');
+      setArtistName('');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleRemove = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await removeSong(id);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
     <main className="min-h-screen relative overflow-hidden">
-
-
       <div className="relative z-10 px-4 py-8 max-w-2xl mx-auto min-h-screen">
         {/* Back button */}
         <Link
@@ -92,11 +106,12 @@ export default function ManageMusicPage() {
                 type="text"
                 value={spotifyLink}
                 onChange={(e) => setSpotifyLink(e.target.value)}
+                disabled={isAdding}
                 placeholder="https://open.spotify.com/track/..."
                 className={`w-full p-3 rounded-xl border text-sm transition-colors ${isDark
                   ? 'bg-slate-900/50 border-purple-500/30 text-pink-100 placeholder-purple-400/50'
                   : 'bg-pink-50 border-pink-200 text-rose-800 placeholder-pink-300'
-                  }`}
+                  } ${isAdding ? 'opacity-70' : ''}`}
               />
             </div>
 
@@ -109,11 +124,12 @@ export default function ManageMusicPage() {
                   type="text"
                   value={songTitle}
                   onChange={(e) => setSongTitle(e.target.value)}
+                  disabled={isAdding}
                   placeholder="e.g. Perfect"
                   className={`w-full p-3 rounded-xl border text-sm transition-colors ${isDark
                     ? 'bg-slate-900/50 border-purple-500/30 text-pink-100 placeholder-purple-400/50'
                     : 'bg-pink-50 border-pink-200 text-rose-800 placeholder-pink-300'
-                    }`}
+                    } ${isAdding ? 'opacity-70' : ''}`}
                 />
               </div>
               <div>
@@ -124,28 +140,30 @@ export default function ManageMusicPage() {
                   type="text"
                   value={artistName}
                   onChange={(e) => setArtistName(e.target.value)}
+                  disabled={isAdding}
                   placeholder="e.g. Ed Sheeran"
                   className={`w-full p-3 rounded-xl border text-sm transition-colors ${isDark
                     ? 'bg-slate-900/50 border-purple-500/30 text-pink-100 placeholder-purple-400/50'
                     : 'bg-pink-50 border-pink-200 text-rose-800 placeholder-pink-300'
-                    }`}
+                    } ${isAdding ? 'opacity-70' : ''}`}
                 />
               </div>
             </div>
 
             {error && (
-              <p className="text-red-400 text-xs px-1">{error}</p>
+              <p className="text-red-400 text-xs px-1 font-medium">{error}</p>
             )}
 
-            <button
-              onClick={handleAdd}
-              className={`w-full py-3 rounded-xl font-medium transition-all ${isDark
-                ? 'bg-pink-500 hover:bg-pink-400 text-white shadow-lg shadow-pink-500/20'
-                : 'bg-rose-500 hover:bg-rose-400 text-white shadow-lg shadow-rose-500/20'
-                }`}
-            >
-              + Add Song
-            </button>
+            <div className="mt-4">
+              <RomanticButton
+                onClick={handleAdd}
+                isLoading={isAdding}
+                disabled={!spotifyLink.trim() || !songTitle.trim()}
+                variant="primary"
+              >
+                Add Song 🎶
+              </RomanticButton>
+            </div>
           </div>
         </motion.div>
 
@@ -184,14 +202,15 @@ export default function ManageMusicPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => removeSong(song.id)}
+                  onClick={() => handleRemove(song.id)}
+                  disabled={deletingId === song.id}
                   className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDark
                     ? 'bg-red-900/50 hover:bg-red-800/70 text-red-300'
                     : 'bg-red-100 hover:bg-red-200 text-red-500'
-                    }`}
+                    } ${deletingId === song.id ? 'opacity-50 animate-pulse' : ''}`}
                   aria-label="Remove song"
                 >
-                  ✕
+                  {deletingId === song.id ? '...' : '✕'}
                 </button>
               </motion.div>
             ))}

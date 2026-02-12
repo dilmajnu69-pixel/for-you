@@ -3,13 +3,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 // Types for application data structures
-interface Message {
+export interface Message {
   id: number;
   text: string;
   type: string; // 'love', 'note', 'memory' etc.
 }
 
-interface SpecialDate {
+export interface SpecialDate {
   id: number;
   title: string;
   date: string; // ISO format YYYY-MM-DD
@@ -17,7 +17,7 @@ interface SpecialDate {
   recurring: boolean; // If true, repeats every year
 }
 
-interface Photo {
+export interface Photo {
   id: number;
   src: string; // URL or path to image
   caption?: string;
@@ -25,7 +25,7 @@ interface Photo {
   storagePath?: string; // Optional: path in Firebase Storage
 }
 
-interface Song {
+export interface Song {
   id: number;
   title: string;
   artist: string;
@@ -47,15 +47,15 @@ interface DataContextType {
   loadingConfig: {
     photos: boolean;
   };
-  addMessage: (text: string, type: string) => void;
-  removeMessage: (id: number) => void;
-  addSpecialDate: (title: string, date: string, emoji: string, recurring: boolean) => void;
-  removeSpecialDate: (id: number) => void;
-  addPhoto: (fileOrUrl: File | string, caption?: string, date?: string) => Promise<{ success: boolean; error?: string }>;
-  updatePhoto: (id: number, fileOrUrl: File | string | null, caption?: string, date?: string) => Promise<{ success: boolean; error?: string }>;
-  removePhoto: (id: number) => Promise<void>;
-  addSong: (title: string, artist: string, spotifyId: string) => void;
-  removeSong: (id: number) => void;
+  addMessage: (text: string, type: string) => Promise<Response>;
+  removeMessage: (id: number) => Promise<Response>;
+  addSpecialDate: (title: string, date: string, emoji: string, recurring: boolean) => Promise<Response>;
+  removeSpecialDate: (id: number) => Promise<Response>;
+  addPhoto: (fileOrUrl: File | string, caption?: string, date?: string) => Promise<{ success: boolean; data?: Photo; error?: string }>;
+  updatePhoto: (id: number, fileOrUrl: File | string | null, caption?: string, date?: string) => Promise<{ success: boolean; data?: Photo; error?: string }>;
+  removePhoto: (id: number) => Promise<Response>;
+  addSong: (title: string, artist: string, spotifyId: string) => Promise<Response>;
+  removeSong: (id: number) => Promise<Response>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -66,6 +66,8 @@ import initialSpecialDates from '@/../data/special-dates.json';
 import initialMusic from '@/../data/music.json';
 import initialPetNames from '@/../data/pet-names.json';
 import initialLoveLetter from '@/../data/love-letter.json';
+
+import { toast } from 'react-hot-toast';
 
 // Provider Component: Manages global state and data persistence
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -154,52 +156,99 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // CRUD Operations
 
-  // CRUD Operations
-
   const addMessage = (text: string, type: string = 'note') => {
     const newId = Math.max(0, ...messages.map(m => m.id)) + 1;
     const newMessages = [...messages, { id: newId, text, type }];
+
     setMessages(newMessages);
-    fetch('/api/save-data', {
+
+    const promise = fetch('/api/save-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'messages', data: newMessages }),
-    }).catch(err => console.error('Failed to save messages:', err));
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to save');
+      return res;
+    });
+
+    toast.promise(promise, {
+      loading: 'Writing your note... ✍️',
+      success: 'Message saved! 💌',
+      error: 'Could not save message 😢',
+    });
+
+    return promise;
   };
 
   const removeMessage = (id: number) => {
     const newMessages = messages.filter(m => m.id !== id);
     setMessages(newMessages);
-    fetch('/api/save-data', {
+
+    const promise = fetch('/api/save-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'messages', data: newMessages }),
-    }).catch(err => console.error('Failed to save messages:', err));
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to delete');
+      return res;
+    });
+
+    toast.promise(promise, {
+      loading: 'Removing message... 🗑️',
+      success: 'Message removed! ✨',
+      error: 'Failed to delete message ❌',
+    });
+
+    return promise;
   };
 
   const addSpecialDate = (title: string, date: string, emoji: string, recurring: boolean) => {
     const newId = Math.max(0, ...specialDates.map(s => s.id)) + 1;
     const newDates = [...specialDates, { id: newId, title, date, emoji, recurring }];
     setSpecialDates(newDates);
-    fetch('/api/save-data', {
+
+    const promise = fetch('/api/save-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'special-dates', data: newDates }),
-    }).catch(err => console.error('Failed to save special dates:', err));
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to save');
+      return res;
+    });
+
+    toast.promise(promise, {
+      loading: 'Marking the calendar... 📅',
+      success: 'Special date added! 🎉',
+      error: 'Could not save date 😢',
+    });
+
+    return promise;
   };
 
   const removeSpecialDate = (id: number) => {
     const newDates = specialDates.filter(s => s.id !== id);
     setSpecialDates(newDates);
-    fetch('/api/save-data', {
+
+    const promise = fetch('/api/save-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'special-dates', data: newDates }),
-    }).catch(err => console.error('Failed to save special dates:', err));
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to remove');
+      return res;
+    });
+
+    toast.promise(promise, {
+      loading: 'Deleting memory... 🗑️',
+      success: 'Date removed! ✨',
+      error: 'Failed to remove date ❌',
+    });
+
+    return promise;
   };
 
   const addPhoto = async (fileOrUrl: File | string, caption?: string, date?: string) => {
-    try {
+    const uploadPromise = (async () => {
       const formData = new FormData();
       if (typeof fileOrUrl === 'string') {
         formData.append('src', fileOrUrl);
@@ -221,15 +270,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       setPhotos(prev => [data, ...prev]);
-      return { success: true };
+      return data;
+    })();
+
+    toast.promise(uploadPromise, {
+      loading: 'Uploading your memory... 📸',
+      success: 'Photo added to gallery! ❤️',
+      error: (err) => `Upload failed: ${err.message || 'Error'} 😢`,
+    });
+
+    try {
+      const data = await uploadPromise;
+      return { success: true, data };
     } catch (e) {
-      console.error(e);
       return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
     }
   };
 
   const updatePhoto = async (id: number, fileOrUrl: File | string | null, caption?: string, date?: string) => {
-    try {
+    const updatePromise = (async () => {
       const formData = new FormData();
       if (fileOrUrl) {
         if (typeof fileOrUrl === 'string') {
@@ -253,47 +312,87 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       setPhotos(prev => prev.map(p => p.id === id ? data : p));
-      return { success: true };
+      return data;
+    })();
+
+    toast.promise(updatePromise, {
+      loading: 'Updating photo details... ✏️',
+      success: 'Memory updated! ✨',
+      error: 'Failed to update photo 😢',
+    });
+
+    try {
+      const data = await updatePromise;
+      return { success: true, data };
     } catch (e) {
-      console.error(e);
       return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
     }
   };
 
   const removePhoto = async (id: number) => {
-    // Optimistic update
     const previousPhotos = [...photos];
     setPhotos(photos.filter(p => p.id !== id));
 
-    try {
-      const res = await fetch(`/api/photos/${id}`, { method: 'DELETE' });
+    const promise = fetch(`/api/photos/${id}`, { method: 'DELETE' }).then(res => {
       if (!res.ok) throw new Error('Delete failed');
-    } catch (e) {
-      console.error(e);
-      // Revert if failed
-      setPhotos(previousPhotos);
-    }
+      return res;
+    });
+
+    toast.promise(promise, {
+      loading: 'Deleting photo from Drive... 🗑️',
+      success: 'Photo removed! ✅',
+      error: () => {
+        setPhotos(previousPhotos);
+        return 'Failed to remove photo 😢';
+      },
+    });
+
+    return promise;
   };
 
   const addSong = (title: string, artist: string, spotifyId: string) => {
     const newId = Math.max(0, ...songs.map(s => s.id)) + 1;
     const newSongs = [...songs, { id: newId, title, artist, spotifyId }];
     setSongs(newSongs);
-    fetch('/api/save-data', {
+
+    const promise = fetch('/api/save-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'music', data: newSongs }),
-    }).catch(err => console.error('Failed to save music:', err));
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to save');
+      return res;
+    });
+
+    toast.promise(promise, {
+      loading: 'Adding to playlist... 🎵',
+      success: 'Song added! 🎶',
+      error: 'Could not save song 😢',
+    });
+
+    return promise;
   };
 
   const removeSong = (id: number) => {
     const newSongs = songs.filter(s => s.id !== id);
     setSongs(newSongs);
-    fetch('/api/save-data', {
+
+    const promise = fetch('/api/save-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'music', data: newSongs }),
-    }).catch(err => console.error('Failed to save music:', err));
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to remove');
+      return res;
+    });
+
+    toast.promise(promise, {
+      loading: 'Removing song... 🗑️',
+      success: 'Song removed! ✨',
+      error: 'Failed to remove song ❌',
+    });
+
+    return promise;
   };
 
   return (

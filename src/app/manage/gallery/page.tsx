@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useTheme } from '@/context/ThemeContext';
-import { useData } from '@/context/DataContext';
+import { useData, Photo } from '@/context/DataContext';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import RomanticButton from '@/components/RomanticButton';
 
 // Simple Spinner Component
 const Spinner = () => (
@@ -46,7 +47,7 @@ export default function ManageGalleryPage() {
   const [isUploading, setIsUploading] = useState(false);
 
   // Edit State
-  const [editingPhoto, setEditingPhoto] = useState<any | null>(null);
+  const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [editSrcType, setEditSrcType] = useState<'url' | 'upload'>('url');
   const [editImageUrl, setEditImageUrl] = useState('');
   const [editFile, setEditFile] = useState<File | null>(null);
@@ -56,26 +57,20 @@ export default function ManageGalleryPage() {
   const handleAdd = async () => {
     if (imageUrl.trim() || selectedFile) {
       setIsUploading(true);
-      const toastId = toast.loading('Uploading photo...');
-
       try {
         const source = srcType === 'upload' && selectedFile ? selectedFile : imageUrl.trim();
         const result = await addPhoto(source, caption.trim(), date);
 
         if (result.success) {
-          toast.success('Photo added successfully!', { id: toastId });
           setImageUrl('');
           setSelectedFile(null);
           setCaption('');
           setDate('');
           const fileInput = document.getElementById('file-upload') as HTMLInputElement;
           if (fileInput) fileInput.value = '';
-        } else {
-          toast.error(result.error || 'Failed to save photo.', { id: toastId });
         }
       } catch (e) {
         console.error(e);
-        toast.error('An unexpected error occurred.', { id: toastId });
       } finally {
         setIsUploading(false);
       }
@@ -123,8 +118,6 @@ export default function ManageGalleryPage() {
   const handleUpdate = async () => {
     if (!editingPhoto) return;
     setIsUploading(true);
-    const toastId = toast.loading('Updating photo...');
-
     try {
       let source: File | string | null = null;
       if (editSrcType === 'upload' && editFile) {
@@ -136,16 +129,12 @@ export default function ManageGalleryPage() {
       const result = await updatePhoto(editingPhoto.id, source, editCaption, editDate);
 
       if (result.success) {
-        toast.success('Photo updated!', { id: toastId });
         setEditingPhoto(null);
         setEditFile(null);
-      } else {
-        toast.error(result.error || 'Failed to update.', { id: toastId });
       }
 
     } catch (e) {
       console.error(e);
-      toast.error('Update failed.', { id: toastId });
     } finally {
       setIsUploading(false);
     }
@@ -210,16 +199,16 @@ export default function ManageGalleryPage() {
             <div><label className={`block text-sm mb-1 ${isDark ? 'text-purple-300' : 'text-pink-500'}`}>Date (Optional)</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`w-full p-3 rounded-xl border ${isDark ? 'bg-slate-900/50 border-purple-500/30 text-pink-100' : 'bg-pink-50 border-pink-200 text-rose-800'}`} /></div>
           </div>
 
-          <button onClick={handleAdd} disabled={(!imageUrl.trim() && !selectedFile) || isUploading} className={`mt-6 px-6 py-2 rounded-xl font-medium w-full flex justify-center items-center gap-2 ${((imageUrl || selectedFile) && !isUploading) ? (isDark ? 'bg-pink-500 text-white' : 'bg-rose-500 text-white') : (isDark ? 'bg-slate-700 text-slate-500' : 'bg-pink-100 text-pink-300')}`}>
-            {isUploading ? (
-              <>
-                <Spinner />
-                Uploading...
-              </>
-            ) : (
-              '+ Add Photo'
-            )}
-          </button>
+          <div className="mt-6">
+            <RomanticButton
+              onClick={handleAdd}
+              isLoading={isUploading}
+              disabled={!imageUrl.trim() && !selectedFile}
+              variant="primary"
+            >
+              Add Photo 📸
+            </RomanticButton>
+          </div>
         </motion.div>
 
         {/* Photo Grid */}
@@ -294,10 +283,16 @@ export default function ManageGalleryPage() {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setEditingPhoto(null)} className="flex-1 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800">Cancel</button>
-                <button onClick={handleUpdate} disabled={isUploading} className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium">
-                  {isUploading ? 'Saving...' : 'Save Changes'}
-                </button>
+                <button onClick={() => setEditingPhoto(null)} className={`flex-1 py-3 rounded-xl font-medium transition-colors ${isDark ? 'bg-slate-700 text-purple-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Cancel</button>
+                <div className="flex-1">
+                  <RomanticButton
+                    onClick={handleUpdate}
+                    isLoading={isUploading}
+                    variant="primary"
+                  >
+                    Save Changes ✨
+                  </RomanticButton>
+                </div>
               </div>
 
             </motion.div>
