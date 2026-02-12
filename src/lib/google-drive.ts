@@ -200,17 +200,124 @@ async function findFile(name: string) {
 }
 
 // ===========================
-// DATABASE (photos.json) OPERATIONS
+// GENERIC JSON PERSISTENCE (Universal Sync)
+// ===========================
+
+/**
+ * Get data from a JSON file with Google Drive sync
+ * 
+ * @param filename - Name of the file in the data/ directory (e.g., 'messages.json')
+ * @returns Parsed JSON content or null if failed
+ */
+export async function getPersistentJSON<T>(filename: string): Promise<T | null> {
+  const drive = getDriveClient();
+  const filePath = path.join(DATA_DIR, filename);
+
+  // 1. If Drive is available, try to get from Drive first to stay in sync
+  if (drive) {
+    try {
+      const driveFile = await findFile(filename);
+      if (driveFile) {
+        const res = await retryWithBackoff(async () => {
+          return await drive.files.get(
+            { fileId: driveFile.id!, alt: 'media' },
+            { responseType: 'stream' }
+          );
+        });
+
+        // Read stream to string
+        const chunks: any[] = [];
+        const content = await new Promise<string>((resolve, reject) => {
+          res.data.on('data', (chunk: any) => chunks.push(chunk));
+          res.data.on('error', reject);
+          res.data.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+        });
+
+        const data = JSON.parse(content);
+
+        // Save locally as a cache/backup
+        await fs.mkdir(DATA_DIR, { recursive: true });
+        await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+
+        return data as T;
+      }
+    } catch (error) {
+      console.error(`[Google Drive] Failed to fetch ${filename} from Drive:`, error);
+    }
+  }
+
+  // 2. Fallback to local filesystem
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(content) as T;
+  } catch (error) {
+    console.warn(`[Local DB] Failed to read ${filename}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Save data to a JSON file and sync to Google Drive
+ * 
+ * @param filename - Name of the file in the data/ directory
+ * @param data - Object to save
+ */
+export async function savePersistentJSON(filename: string, data: any) {
+  const drive = getDriveClient();
+  const folderId = getFolderId();
+  const filePath = path.join(DATA_DIR, filename);
+
+  // 1. Always save locally first (immediate backup)
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    console.log(`[Local DB] ${filename} saved successfully`);
+  } catch (error) {
+    console.error(`[Local DB] Failed to save ${filename}:`, error);
+  }
+
+  // 2. Sync to Google Drive
+  if (!drive || !folderId) return;
+
+  try {
+    const file = await findFile(filename);
+    const media = {
+      mimeType: 'application/json',
+      body: JSON.stringify(data, null, 2),
+    };
+
+    await retryWithBackoff(async () => {
+      if (file) {
+        return await drive.files.update({
+          fileId: file.id!,
+          media: media,
+        });
+      } else {
+        return await drive.files.create({
+          requestBody: {
+            name: filename,
+            parents: [folderId],
+          },
+          media: media,
+        });
+      }
+    });
+    console.log(`[Google Drive] ${filename} synced to Drive successfully`);
+  } catch (e) {
+    console.error(`[Google Drive] Failed to sync ${filename} to Drive:`, e);
+  }
+}
+
+// ===========================
+// SPECIFIC PHOTO DATABASE OPERATIONS
 // ===========================
 
 /**
  * Sync Google Drive folder with local database.
  * 
+ * - Loads the latest photos.json from Drive (for metadata like captions).
  * - Discovers new files manually uploaded to the Drive folder.
  * - Removes records for files deleted from Drive.
- * - Always keeps the local database as the source of truth for metadata (captions, custom dates).
- * 
- * @returns Synchronized array of photos
  */
 async function syncWithDrive() {
   const drive = getDriveClient();
@@ -221,24 +328,26 @@ async function syncWithDrive() {
   try {
     console.log('[Google Drive] Starting background sync...');
 
-    // 1. Get all image files from Drive folder
+    // 1. Get current metadata from Drive (or local fallback)
+    const remoteData = await getPersistentJSON<{ photos: any[] }>(DB_FILENAME);
+    const localPhotos = remoteData?.photos || [];
+
+    // 2. Get all image files from Drive folder to check for new/dead files
     const driveFilesRes = await retryWithBackoff(async () => {
       return await drive.files.list({
         q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
-        fields: 'files(id, name, createdTime, webContentLink)',
+        fields: 'files(id, name, createdTime)',
       });
     });
 
     const driveFiles = driveFilesRes.data.files || [];
-    const localPhotos = await getDatabaseRaw(); // Internal get without sync loop
 
-    // 2. Identify new files on Drive not in our database
+    // 3. Identify new files on Drive not in our database
     const newFiles = driveFiles.filter((df: any) =>
       !localPhotos.some((lp: any) => lp.src.includes(df.id))
     );
 
-    // 3. Identify files in our database that no longer exist on Drive
-    // (Only for Drive-hosted photos)
+    // 4. Identify files in our database that no longer exist on Drive
     const deadPhotos = localPhotos.filter((lp: any) => {
       if (!lp.src.includes('drive.google.com')) return false;
       const urlParams = new URLSearchParams(new URL(lp.src).search);
@@ -247,27 +356,27 @@ async function syncWithDrive() {
     });
 
     if (newFiles.length === 0 && deadPhotos.length === 0) {
-      console.log('[Google Drive] Sync complete: Already in sync');
+      console.log('[Google Drive] Sync complete: Metadata and files are up to date');
       return localPhotos;
     }
 
     console.log(`[Google Drive] Syncing: ${newFiles.length} new, ${deadPhotos.length} removed`);
 
-    // 4. Create new photo objects for new files
+    // 5. Create new photo objects
     const newPhotoObjects = newFiles.map((file: any) => ({
-      id: Date.now() + Math.floor(Math.random() * 1000), // Unique-ish ID
+      id: Date.now() + Math.floor(Math.random() * 1000),
       src: `https://drive.google.com/uc?export=view&id=${file.id}`,
-      caption: '', // Empty caption as per user request
+      caption: '',
       date: file.createdTime || new Date().toISOString()
     }));
 
-    // 5. Build final list
+    // 6. Build final list
     const updatedPhotos = [
       ...newPhotoObjects,
       ...localPhotos.filter((lp: any) => !deadPhotos.includes(lp))
     ];
 
-    // 6. Save updated database
+    // 7. Save updated database back to Drive
     await saveDatabase(updatedPhotos);
     return updatedPhotos;
 
@@ -292,90 +401,23 @@ async function getDatabaseRaw() {
 
 /**
  * Retrieve photos database from Google Drive or local storage
- * 
- * Priority:
- * 1. Google Drive (if configured) with automatic sync
- * 2. Local file (fallback)
- * 3. Empty array (if both fail)
- * 
- * @returns Array of photo objects
  */
 export async function getDatabase() {
   const drive = getDriveClient();
 
   if (drive) {
-    // Attempt sync on every load as requested
     const syncedPhotos = await syncWithDrive();
     if (syncedPhotos) return syncedPhotos;
   }
 
-  // Fallback to local raw if Drive sync fails or is not configured
   return await getDatabaseRaw();
 }
 
 /**
  * Save photos database to local storage and optionally to Google Drive
- * 
- * Strategy:
- * - Always saves to local first (fast, reliable backup)
- * - Also saves to Drive if configured (persistent across deployments)
- * 
- * @param data - Array of photo objects to save
  */
 export async function saveDatabase(data: any[]) {
-  const drive = getDriveClient();
-  const folderId = getFolderId();
-
-  // === Always save locally first (immediate backup) ===
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(
-      LOCAL_DB_PATH,
-      JSON.stringify({ photos: data }, null, 2),
-      'utf-8'
-    );
-    console.log('[Local DB] Database saved successfully');
-  } catch (error) {
-    console.error('[Local DB] Failed to save local database:', error);
-    // Don't throw - try Drive anyway
-  }
-
-  // === Also save to Drive if configured ===
-  if (!drive || !folderId) {
-    console.log('[Google Drive] Not configured, using local storage only');
-    return;
-  }
-
-  try {
-    const file = await findFile(DB_FILENAME);
-    const media = {
-      mimeType: 'application/json',
-      body: JSON.stringify(data, null, 2),
-    };
-
-    await retryWithBackoff(async () => {
-      if (file) {
-        // Update existing file
-        return await drive.files.update({
-          fileId: file.id!,
-          media: media,
-        });
-      } else {
-        // Create new file
-        return await drive.files.create({
-          requestBody: {
-            name: DB_FILENAME,
-            parents: [folderId],
-          },
-          media: media,
-        });
-      }
-    });
-    console.log('[Google Drive] Database saved to Drive successfully');
-  } catch (e) {
-    console.error('[Google Drive] Failed to save database to Drive (local backup exists):', e);
-    // Don't throw - local save succeeded
-  }
+  await savePersistentJSON(DB_FILENAME, { photos: data });
 }
 
 // ===========================

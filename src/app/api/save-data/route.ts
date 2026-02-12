@@ -8,8 +8,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { getPersistentJSON, savePersistentJSON } from '@/lib/google-drive';
 
 /**
  * Supported data types and their file mappings
@@ -19,18 +18,15 @@ const DATA_TYPE_MAP = {
   'special-dates': { filename: 'special-dates.json', storageKey: 'specialDates' },
   music: { filename: 'music.json', storageKey: 'songs' },
   songs: { filename: 'music.json', storageKey: 'songs' },
+  'pet-names': { filename: 'pet-names.json', storageKey: 'petNames' },
+  'love-letter': { filename: 'love-letter.json', storageKey: 'content' },
 } as const;
 
 type DataType = keyof typeof DATA_TYPE_MAP;
 
 /**
  * POST /api/save-data
- * Save data array to corresponding JSON file
- * 
- * Request body: { type: DataType, data: Array }
- * 
- * @param request - JSON body with type and data
- * @returns Success status
+ * Save data array to corresponding JSON file with Google Drive sync
  */
 export async function POST(request: Request) {
   try {
@@ -39,31 +35,23 @@ export async function POST(request: Request) {
     // Validate request
     if (!type || !(type in DATA_TYPE_MAP)) {
       return NextResponse.json(
-        { error: 'Invalid type. Must be: messages, special-dates, music, or songs' },
-        { status: 400 }
-      );
-    }
-
-    if (!data || !Array.isArray(data)) {
-      return NextResponse.json(
-        { error: 'Missing or invalid data. Must be an array' },
+        { error: 'Invalid type' },
         { status: 400 }
       );
     }
 
     // Get file configuration
     const config = DATA_TYPE_MAP[type as DataType];
-    const filePath = path.join(process.cwd(), 'data', config.filename);
 
-    // Wrap data in appropriate key and save
+    // Wrap data in appropriate key
     const content = {
       [config.storageKey]: data
     };
 
-    await fs.mkdir(path.join(process.cwd(), 'data'), { recursive: true });
-    await fs.writeFile(filePath, JSON.stringify(content, null, 2), 'utf-8');
+    // Save with Google Drive sync
+    await savePersistentJSON(config.filename, content);
 
-    console.log(`[Save Data] ${type} saved successfully (${data.length} items)`);
+    console.log(`[Save Data] ${type} persisted successfully (${Array.isArray(data) ? data.length : 'object'} items)`);
     return NextResponse.json({ success: true, message: `Saved ${type}` });
 
   } catch (error) {
@@ -77,19 +65,13 @@ export async function POST(request: Request) {
 
 /**
  * GET /api/save-data?type=<DataType>
- * Retrieve data array from corresponding JSON file
- * 
- * Query param: type (messages | special-dates | music | songs)
- * 
- * @param request - Request with type query parameter
- * @returns JSON array of data
+ * Retrieve data array with Google Drive sync
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
 
-    // Validate type parameter
     if (!type || !(type in DATA_TYPE_MAP)) {
       return NextResponse.json(
         { error: 'Invalid or missing type parameter' },
@@ -97,12 +79,12 @@ export async function GET(request: Request) {
       );
     }
 
-    // Get file configuration and read file
     const config = DATA_TYPE_MAP[type as DataType];
-    const filePath = path.join(process.cwd(), 'data', config.filename);
+    const json = await getPersistentJSON<any>(config.filename);
 
-    const fileContent = await fs.readFile(filePath, 'utf-8');
-    const json = JSON.parse(fileContent);
+    if (!json) {
+      return NextResponse.json([]);
+    }
 
     // Extract data array from JSON structure
     const data = json[config.storageKey];
@@ -111,7 +93,6 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error('[Save Data] Failed to read:', error);
-    // Return empty array on error (handles first run gracefully)
     return NextResponse.json([], { status: 200 });
   }
 }
